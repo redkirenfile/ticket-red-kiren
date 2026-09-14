@@ -167,11 +167,12 @@ body::before {
   z-index: 1;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 520px) auto;
+  justify-content: center;
   align-items: flex-start;
-  gap: 28px;
-  padding: 120px 80px 80px;
-  max-width: 1400px;
+  gap: 16px;
+  padding: 120px 40px 80px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -320,6 +321,7 @@ body::before {
   box-shadow: none;
   width: 100%;
   margin-top: 18px;
+  margin-left: -40px;
 }
 .poster-img {
   position: relative;
@@ -1613,7 +1615,7 @@ body::before {
   }
   .hero-content { align-items: center; }
   .hero-meta { justify-content: center; }
-  .hero-poster { order: -1; margin-bottom: 18px; height: auto; justify-content: center; }
+  .hero-poster { order: -1; margin-bottom: 18px; margin-left: 0; height: auto; justify-content: center; }
   .poster-img { max-width: 220px; height: auto; width: 100%; }
   .info-grid { flex-direction: column; align-items: center; }
 }
