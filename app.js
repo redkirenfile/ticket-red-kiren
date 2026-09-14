@@ -57,7 +57,7 @@ const _JSONBIN_API_KEY = '$2a$10$l/R8BGxkz/nlfuPduNbrQe7Vojq21Ta25o8eij5mNFVDeGw
 const _JSONBIN_CONFIGURED = _JSONBIN_BIN_ID !== 'YOUR_BIN_ID_HERE' && _JSONBIN_API_KEY !== 'YOUR_API_KEY_HERE';
 
 async function fetchGlobalConfig() {
-  // Load cached ticket config if available
+  // 1. โหลดจาก localStorage แคชในเครื่องก่อนเพื่อให้แสดงผลได้ทันที
   const cachedTicketCfg = localStorage.getItem('theater_ticket_config');
   if (cachedTicketCfg) {
     try {
@@ -65,14 +65,38 @@ async function fetchGlobalConfig() {
     } catch(e) {}
   }
 
-  try {
-    // 1. ลองดึงสถานะจาก Google Apps Script ก่อน (เป็น API ส่วนกลางที่อัปเดตทันที)
-    if (CONFIG.APPS_SCRIPT_URL && CONFIG.APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE') {
+  // 2. ดึงสถานะเปิด/ปิดประเภทบัตรและโควต้าจาก JSONBin ก่อน (ซิงค์ข้ามเครื่องได้เรียลไทม์ 100%)
+  if (_JSONBIN_CONFIGURED) {
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${_JSONBIN_BIN_ID}/latest?t=${Date.now()}`, {
+        headers: { 'X-Master-Key': _JSONBIN_API_KEY }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const rec = json.record || {};
+        if (rec.ticket_config) {
+          GLOBAL_TICKET_CONFIG = { ...GLOBAL_TICKET_CONFIG, ...rec.ticket_config };
+          localStorage.setItem('theater_ticket_config', JSON.stringify(GLOBAL_TICKET_CONFIG));
+        }
+        if (typeof rec.earlybird_enabled !== 'undefined') {
+          GLOBAL_EARLYBIRD_ENABLED = (rec.earlybird_enabled === true);
+          if (GLOBAL_TICKET_CONFIG['earlybird']) {
+            GLOBAL_TICKET_CONFIG['earlybird'].enabled = GLOBAL_EARLYBIRD_ENABLED;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('JSONBin sync failed:', err);
+    }
+  }
+
+  // 3. ดึงสถานะและยอดขายสะสมจาก Google Apps Script (Central Stock)
+  if (CONFIG.APPS_SCRIPT_URL && CONFIG.APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE') {
+    try {
       const res = await fetch(`${CONFIG.APPS_SCRIPT_URL}?action=getSettings`);
       if (res.ok) {
         const data = await res.json();
         if (data) {
-          // ซิงค์การตั้งค่าประเภทบัตรและราคา (Ticket Types & Pricing)
           if (data.ticket_config) {
             try {
               const parsed = typeof data.ticket_config === 'string' ? JSON.parse(data.ticket_config) : data.ticket_config;
@@ -81,18 +105,15 @@ async function fetchGlobalConfig() {
                 localStorage.setItem('theater_ticket_config', JSON.stringify(GLOBAL_TICKET_CONFIG));
               }
             } catch (err) {}
-          } else {
-            // Legacy / individual toggles
-            if (typeof data.earlybird_enabled !== 'undefined') {
-              const eb = (data.earlybird_enabled === true || data.earlybird_enabled === 'true');
-              GLOBAL_EARLYBIRD_ENABLED = eb;
-              if (GLOBAL_TICKET_CONFIG['earlybird']) GLOBAL_TICKET_CONFIG['earlybird'].enabled = eb;
-            }
+          } else if (typeof data.earlybird_enabled !== 'undefined') {
+            const eb = (data.earlybird_enabled === true || data.earlybird_enabled === 'true');
+            GLOBAL_EARLYBIRD_ENABLED = eb;
+            if (GLOBAL_TICKET_CONFIG['earlybird']) GLOBAL_TICKET_CONFIG['earlybird'].enabled = eb;
           }
 
           // บันทึกยอดจองกลาง (Central Stock) ลงเครื่องเพื่อใช้คำนวณที่นั่งเหลือจริง
-          if (data.soldCounts) {
-            localStorage.setItem('theater_sold_counts', JSON.stringify(data.soldCounts));
+          if (data.soldCounts || data.showCounts) {
+            localStorage.setItem('theater_sold_counts', JSON.stringify(data.soldCounts || data.showCounts));
           }
           // บันทึกค่า Capacity ที่ปรับปรุงจาก Sheets ลงใน localStorage 'theater_stock'
           const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
@@ -101,46 +122,16 @@ async function fetchGlobalConfig() {
               const slotKey = key.replace('capacity|', '');
               const parsedVal = parseInt(data[key], 10);
               if (!isNaN(parsedVal) && parsedVal >= 0) {
-                if (parsedVal === 85 || parsedVal === 84 || parsedVal === 82 || parsedVal === 80 || parsedVal === 50) {
-                  stock[slotKey] = 65;
-                } else {
-                  stock[slotKey] = parsedVal;
-                }
+                stock[slotKey] = parsedVal;
               }
             }
           });
           localStorage.setItem('theater_stock', JSON.stringify(stock));
-          return;
         }
       }
+    } catch (err) {
+      console.warn('Apps Script sync failed:', err);
     }
-
-    // 2. Fallback: ถ้าไม่ได้ตั้งค่า Apps Script ให้ลองดึงจาก JSONBin (กรณีใช้งานระบบเดิม)
-    if (_JSONBIN_CONFIGURED) {
-      const res = await fetch(`https://api.jsonbin.io/v3/b/${_JSONBIN_BIN_ID}/latest`, {
-        headers: { 'X-Master-Key': _JSONBIN_API_KEY }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (typeof data.record?.earlybird_enabled === 'boolean') {
-          GLOBAL_EARLYBIRD_ENABLED = data.record.earlybird_enabled;
-          if (GLOBAL_TICKET_CONFIG['earlybird']) GLOBAL_TICKET_CONFIG['earlybird'].enabled = data.record.earlybird_enabled;
-          return;
-        }
-      }
-    }
-
-    // 3. Fallback สุดท้าย: ดึงจากไฟล์ config.json แบบสแตติกในเครื่อง
-    const res2 = await fetch('./config.json?t=' + Date.now());
-    if (res2.ok) {
-      const cfg = await res2.json();
-      if (typeof cfg.earlybird_enabled === 'boolean') {
-        GLOBAL_EARLYBIRD_ENABLED = cfg.earlybird_enabled;
-        if (GLOBAL_TICKET_CONFIG['earlybird']) GLOBAL_TICKET_CONFIG['earlybird'].enabled = cfg.earlybird_enabled;
-      }
-    }
-  } catch (e) {
-    // ออฟไลน์: ใช้ค่าเริ่มต้น
   }
 }
 
@@ -431,10 +422,10 @@ function renderTicketTypes() {
     }
     return t.available === true;
   }).map(t => {
-    // ปรับราคาตามที่กำหนดไว้ใน GLOBAL_TICKET_CONFIG (ถ้ามี)
+    // ราคาขายคงที่ตามที่กำหนดไว้ ไม่เปิดให้ปรับ
     const cfg = GLOBAL_TICKET_CONFIG[t.id];
-    const price = (cfg && typeof cfg.price === 'number') ? cfg.price : t.price;
-    return { ...t, price };
+    const quota = (cfg && cfg.quota > 0) ? cfg.quota : 0;
+    return { ...t, quota };
   });
 
   // หากประเภทบัตรที่เลือกไว้ปัจจุบันถูกปิดขาย ให้เลือกบัตรประเภทแรกที่ยังเปิดขายอัตโนมัติ
@@ -457,6 +448,7 @@ function renderTicketTypes() {
       <div class="ticket-type-info">
         <div class="ticket-type-name">${t.name}</div>
         ${t.desc ? `<div class="ticket-type-desc">${t.desc}</div>` : ''}
+        ${t.quota > 0 ? `<div style="font-size:0.75rem;color:#48d9e2;margin-top:2px;">🎟️ โควต้าจำกัด ${t.quota} ใบ</div>` : ''}
         ${t.badgeText ? `<span class="ticket-type-badge badge-${t.badge}">${t.badgeText}</span>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:16px">
@@ -1075,9 +1067,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load global config asynchronously in the background (Non-blocking page load!)
   fetchGlobalConfig().then(() => {
-    // If the customer is on the ticket selection step, silently refresh numbers
+    // If the customer is on the ticket selection step, silently refresh numbers and types
     if (document.querySelector('.view.active')?.id === 'view-ticket') {
       renderSchedule();
+      if (state.selectedDateId && state.selectedSlot) {
+        renderTicketTypes();
+      }
     }
   }).catch(err => console.warn('Background config fetch failed:', err));
 

@@ -1710,11 +1710,11 @@ body::before {
     width: 100%;
   }
   .hero-synopsis {
-    font-size: 0.94rem;
-    line-height: 1.85;
+    font-size: clamp(0.85rem, 3.8vw, 0.95rem);
+    line-height: 1.8;
     margin: 12px auto 20px;
     width: 100%;
-    max-width: 360px;
+    max-width: 100%;
   }
   .hero-title {
     font-size: 1.4rem;
