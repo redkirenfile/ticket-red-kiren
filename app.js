@@ -12,7 +12,7 @@ const CONFIG = {
   slotCapacity: 65, // ← จำนวนที่นั่งสูงสุดต่อรอบ (ค่าพื้นฐานเริ่มต้น 65)
 
   // ⬇️ ใส่ URL ของ Google Apps Script ที่ deploy แล้วตรงนี้
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxeeLAYpMzpwMlp_o41YAON1IdBalgtFZqEyJ4z_R1UKUCypwQGutr7DgvMHZtCipT1xw/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxZYQLm5WLNKL4NqGXXRPQFHaldQTCMwb5oaENmMqGHVGC4Aqcy87JnR2oyX9MZtwCECw/exec',
 
   // ── ตารางรอบการแสดง ──
   schedule: [
