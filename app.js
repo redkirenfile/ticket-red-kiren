@@ -24,9 +24,6 @@ const CONFIG = {
     { id:'earlybird',   name:'EARLYBIRD',   desc:'โปรโมชั่น Early Bird ราคาพิเศษ 500 บาท', price:500, badge:'early',   badgeText:'🐦 EARLYBIRD',   available:true },
     { id:'student',     name:'STUDENT',     desc:'บัตรนักเรียน/นักศึกษา ราคาพิเศษ 550 บาท', price:550, badge:'student', badgeText:'🎓 STUDENT',     available:true },
     { id:'regular',     name:'REGULAR',     desc:'บัตรราคาปกติ 900 บาท',               price:900, badge:'regular', badgeText:'🎭 REGULAR',     available:true },
-    { id:'quota-free',      name:'โควต้าฟรี', desc:'โควต้าพิเศษสำหรับทีมงาน/ Staff', price:0,   badge:'quota', badgeText:'🎟️ โควต้าฟรี', available:false },
-    { id:'quota-earlybird', name:'โควต้าราคา Early Bird', desc:'โควต้าพิเศษราคา Early Bird', price:500, badge:'quota', badgeText:'🎟️ โควต้า Early Bird', available:false },
-    { id:'quota-spon',      name:'โควต้า Spon', desc:'โควต้าพิเศษสำหรับสปอนเซอร์', price:0, badge:'quota', badgeText:'🎟️ โควต้า Spon', available:false },
   ],
 
   bankAccount: {

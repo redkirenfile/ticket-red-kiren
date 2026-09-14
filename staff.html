@@ -605,6 +605,11 @@
       color: #86efac;
       border: 1px solid rgba(34, 197, 94, 0.35);
     }
+    .tsi-badge-student {
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+    }
     .tsi-badge-regular {
       background: rgba(255, 59, 48, 0.15);
       color: #ff8078;
@@ -845,16 +850,9 @@
         <div class="edit-form-group">
           <label>ประเภทบัตร</label>
           <select id="edit-type">
-            <option value="PRO AFTER 6">🔥 PRO AFTER 6 (350 บาท)</option>
-            <option value="EARLYBIRD">🐦 EARLYBIRD (390 บาท)</option>
-            <option value="PRO 6 ตุลา">⭐ PRO 6 ตุลา (590 บาท)</option>
-            <option value="REGULAR">🎭 REGULAR (690 บาท)</option>
-            <option value="Early Bird">🐦 Early Bird (เดิม 590 บาท)</option>
-            <option value="บัตรปกติ">🎭 บัตรปกติ (เดิม 790 บาท)</option>
-            <option value="QT FREE">🎟️ QT FREE (0 บาท)</option>
-            <option value="QT SPON">🎟️ QT SPON (0 บาท)</option>
-            <option value="QT DISCOUNT">🎟️ QT DISCOUNT (590 บาท)</option>
-            <option value="บัตรโควต้า">🎟️ บัตรโควต้า (0 บาท)</option>
+            <option value="EARLYBIRD">🐦 EARLYBIRD (500 บาท)</option>
+            <option value="STUDENT">🎓 STUDENT (550 บาท)</option>
+            <option value="REGULAR">🎭 REGULAR (900 บาท)</option>
           </select>
         </div>
         <div class="edit-form-group">
@@ -974,13 +972,9 @@
       <div class="booking-group">
         <label for="sb-type">ประเภทบัตร <span style="color:var(--error)">*</span></label>
         <select id="sb-type" onchange="updateQuotaBookingPrice()">
-          <option value="PRO AFTER 6">🔥 PRO AFTER 6 (350 บาท)</option>
-          <option value="EARLYBIRD">🐦 EARLYBIRD (390 บาท)</option>
-          <option value="PRO 6 ตุลา">⭐ PRO 6 ตุลา (590 บาท)</option>
-          <option value="REGULAR">🎭 REGULAR (690 บาท)</option>
-          <option value="QT FREE">🎟️ QT FREE (0 บาท)</option>
-          <option value="QT SPON">🎟️ QT SPON (0 บาท)</option>
-          <option value="QT DISCOUNT">🎟️ QT DISCOUNT (590 บาท)</option>
+          <option value="EARLYBIRD">🐦 EARLYBIRD (500 บาท)</option>
+          <option value="STUDENT">🎓 STUDENT (550 บาท)</option>
+          <option value="REGULAR">🎭 REGULAR (900 บาท)</option>
         </select>
       </div>
       <div class="booking-group">
@@ -1090,43 +1084,31 @@ const JSONBIN_WRITE_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
 
 
 const STAFF_TICKET_DEFS = [
-  { id: 'pro-after-6', name: 'PRO AFTER 6', desc: 'โปรโมชั่นพิเศษ PRO AFTER 6', defaultPrice: 350, badge: 'promo',   badgeText: '🔥 PRO AFTER 6' },
-  { id: 'earlybird',   name: 'EARLYBIRD',   desc: 'โปรโมชั่น Early Bird ราคาพิเศษ', defaultPrice: 390, badge: 'early',   badgeText: '🐦 EARLYBIRD' },
-  { id: 'pro-6-oct',   name: 'PRO 6 ตุลา',  desc: 'โปรโมชั่นพิเศษ PRO 6 ตุลา',   defaultPrice: 590, badge: 'promo',   badgeText: '⭐ PRO 6 ตุลา' },
-  { id: 'regular',     name: 'REGULAR',     desc: 'บัตรราคาปกติ',               defaultPrice: 690, badge: 'regular', badgeText: '🎭 REGULAR' },
+  { id: 'earlybird', name: 'EARLYBIRD', desc: 'โปรโมชั่น Early Bird ราคาพิเศษ', defaultPrice: 500, badge: 'early',   badgeText: '🐦 EARLYBIRD' },
+  { id: 'student',   name: 'STUDENT',   desc: 'บัตรนักเรียน/นักศึกษา ราคาพิเศษ', defaultPrice: 550, badge: 'student', badgeText: '🎓 STUDENT' },
+  { id: 'regular',   name: 'REGULAR',   desc: 'บัตรราคาปกติ',               defaultPrice: 900, badge: 'regular', badgeText: '🎭 REGULAR' },
 ];
 
 let _ticketConfig = {
-  'pro-after-6': { enabled: false, price: 350 },
-  'earlybird':   { enabled: true,  price: 390 },
-  'pro-6-oct':   { enabled: false, price: 590 },
-  'regular':     { enabled: true,  price: 690 },
+  'earlybird': { enabled: true, price: 500 },
+  'student':   { enabled: true, price: 550 },
+  'regular':   { enabled: true, price: 900 },
 };
 
 const TICKET_TYPES = {
-  'PRO AFTER 6': 350,
-  'EARLYBIRD': 390,
-  'Early Bird': 390,
-  'PRO 6 ตุลา': 590,
-  'REGULAR': 690,
-  'บัตรปกติ': 690,
-  'QT SPON': 0,
-  'QT FREE': 0,
-  'QT DISCOUNT': 590,
-  'โควต้าฟรี': 0,
-  'โควต้าราคา Early Bird': 390,
-  'โควต้า Spon': 0,
-  'บัตรโควต้า': 0,
+  'EARLYBIRD': 500,
+  'Early Bird': 500,
+  'STUDENT': 550,
+  'Student': 550,
+  'REGULAR': 900,
+  'Regular': 900,
+  'บัตรปกติ': 900,
 };
 
 // ตารางรอบการแสดง (ต้องตรงกับ app.js)
 const SCHEDULE = [
-  { id:'w1-fri', dateLabel:'ศุกร์ที่ 16 ต.ค. 2569',    slots:['19:00'] },
-  { id:'w1-sat', dateLabel:'เสาร์ที่ 17 ต.ค. 2569',   slots:['14:00','19:00'] },
-  { id:'w1-sun', dateLabel:'อาทิตย์ที่ 18 ต.ค. 2569', slots:['14:00','19:00'] },
-  { id:'w2-fri', dateLabel:'ศุกร์ที่ 23 ต.ค. 2569',    slots:['14:00','19:00'] },
-  { id:'w2-sat', dateLabel:'เสาร์ที่ 24 ต.ค. 2569',   slots:['14:00','19:00'] },
-  { id:'w2-sun', dateLabel:'อาทิตย์ที่ 25 ต.ค. 2569', slots:['14:00','19:00'] },
+  { id:'w1-sat', dateLabel:'เสาร์ที่ 10 ต.ค. 2569',   slots:['13:00','19:00'] },
+  { id:'w1-sun', dateLabel:'อาทิตย์ที่ 11 ต.ค. 2569', slots:['13:00','19:00'] },
 ];
 const DEFAULT_CAPACITY = 65;
 
@@ -1793,10 +1775,8 @@ function saveCustomerEdit() {
 
   // Update all tickets in this order
   const newPrice = TICKET_TYPES[newType] || rep.pricePerTicket;
-  const newTypeId = newType === 'Early Bird' ? 'earlybird' : 
-                    (newType === 'QT DISCOUNT' || newType === 'โควต้าราคา Early Bird' ? 'qt-discount' : 
-                    (newType === 'QT SPON' || newType === 'โควต้า Spon' ? 'qt-spon' : 
-                    (newType === 'QT FREE' || newType === 'โควต้าฟรี' || newType === 'บัตรโควต้า' ? 'qt-free' : 'regular')));
+  const newTypeId = (newType === 'Early Bird' || newType === 'EARLYBIRD') ? 'earlybird' : 
+                    (newType === 'STUDENT' || newType === 'Student') ? 'student' : 'regular';
   Object.keys(allTickets).forEach(tid => {
     if (allTickets[tid].orderId === orderId) {
       allTickets[tid] = {
@@ -2758,10 +2738,8 @@ async function submitQuotaBooking() {
       email,
       note:       note ? `[โควต้าแอดมิน] ${note}` : '[โควต้าแอดมิน]',
       type:       ticketType,
-      typeId:     ticketType === 'Early Bird' ? 'earlybird' : 
-                  (ticketType === 'QT DISCOUNT' ? 'qt-discount' : 
-                  (ticketType === 'QT SPON' ? 'qt-spon' : 
-                  (ticketType === 'QT FREE' || ticketType === 'บัตรโควต้า' ? 'qt-free' : 'regular'))),
+      typeId:     (ticketType === 'Early Bird' || ticketType === 'EARLYBIRD') ? 'earlybird' : 
+                  (ticketType === 'STUDENT' || ticketType === 'Student') ? 'student' : 'regular',
       show:       'แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์',
       venue:      'HostBBK (MRT ลุมพินี)',
       showDateId: dateId,
@@ -2779,10 +2757,8 @@ async function submitQuotaBooking() {
     email,
     note:       note ? `[โควต้าแอดมิน] ${note}` : '[โควต้าแอดมิน]',
     slipImage:  'assets/staff-quota-slip.png',
-    typeId:     ticketType === 'Early Bird' ? 'earlybird' : 
-                (ticketType === 'QT DISCOUNT' ? 'qt-discount' : 
-                (ticketType === 'QT SPON' ? 'qt-spon' : 
-                (ticketType === 'QT FREE' || ticketType === 'บัตรโควต้า' ? 'qt-free' : 'regular'))),
+    typeId:     (ticketType === 'Early Bird' || ticketType === 'EARLYBIRD') ? 'earlybird' : 
+                (ticketType === 'STUDENT' || ticketType === 'Student') ? 'student' : 'regular',
     typeName:   ticketType,
     pricePerTicket: netPrice,
     qty,
