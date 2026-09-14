@@ -37,9 +37,7 @@
 <div id="view-landing" class="view active">
   <div class="landing-bg"></div>
   <header class="site-header">
-    <a href="staff.html" class="header-logo" title="Staff Portal">
-      <img src="assets/politicle-logo.png" alt="Politicle" class="header-logo-img" />
-    </a>
+    <a href="staff.html" class="header-logo-text" title="Staff Portal" style="color: #ff3b30; font-weight: 700; font-size: 1.05em; text-decoration: none; padding: 6px 14px; border: 1.5px solid rgba(255,59,48,0.5); border-radius: 6px; letter-spacing: 1px; background: rgba(255,59,48,0.08);">STAFF</a>
     <nav class="header-nav">
       <a href="status.html" class="status-nav-link">🎫 ตรวจสอบสถานะบัตร</a>
       <a href="#" onclick="event.preventDefault();goTo('ticket')" class="btn-nav">จองบัตร</a>
@@ -49,7 +47,7 @@
   <section class="hero">
     <div class="hero-content">
       <h1 class="hero-title">
-        <span style="font-size: 0.88em; font-weight: 600; color: #ffffff; display: block; line-height: 1.35; margin-bottom: 6px;">แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์</span>
+        <span style="font-size: 0.88em; font-weight: 700; color: #ffffff; display: block; line-height: 1.35; margin-bottom: 6px;">แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์</span>
         <span style="color: #ff3b30; display: block; font-size: 1.05em; letter-spacing: 1px; line-height: 1.25;">Red Kiren File : Massacre at Mount Zero</span>
       </h1>
       <div class="hero-synopsis">
@@ -68,7 +66,7 @@
       </div>
       <div class="hero-meta">
         <div class="meta-item">📅 10–11 ตุลาคม 2569</div>
-        <div class="meta-item">🕖 2 รอบการแสดง (13:00 น. และ 19:00 น.)</div>
+        <div class="meta-item"><ctrl42> 2 รอบการแสดง (13:00 น. และ 19:00 น.)</div>
         <div class="meta-item"><a href="https://maps.app.goo.gl/EnthUM3NimTEpAGMA?g_st=ic" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">📍 HostBBK (MRT ลุมพินี)</a></div>
       </div>
       <button id="btn-buy-hero" class="btn-primary btn-lg" onclick="goTo('ticket')">
@@ -77,127 +75,8 @@
       </button>
     </div>
     <div class="hero-poster">
-      <div class="backward-clock-card">
-        <div class="clock-dial" id="backward-clock">
-          <svg class="clock-svg" viewBox="0 0 400 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <radialGradient id="dial-grad" cx="50%" cy="50%" r="50%" fx="35%" fy="35%">
-                <stop offset="0%" stop-color="#181820" />
-                <stop offset="70%" stop-color="#08080a" />
-                <stop offset="100%" stop-color="#000000" />
-              </radialGradient>
-              <radialGradient id="bezel-grad" cx="50%" cy="50%" r="50%">
-                <stop offset="88%" stop-color="#18181c" />
-                <stop offset="94%" stop-color="#2a2a34" />
-                <stop offset="98%" stop-color="#0e0e12" />
-                <stop offset="100%" stop-color="#ff3b30" />
-              </radialGradient>
-            </defs>
-
-            <!-- Outer Bezel Ring -->
-            <circle cx="200" cy="200" r="195" fill="url(#bezel-grad)" stroke="rgba(255,255,255,0.18)" stroke-width="2" />
-            <circle cx="200" cy="200" r="183" fill="none" stroke="rgba(255,59,48,0.4)" stroke-width="1.2" />
-
-            <!-- Dial Face -->
-            <circle cx="200" cy="200" r="180" fill="url(#dial-grad)" />
-
-            <!-- Decorative Concentric Rings -->
-            <circle cx="200" cy="200" r="128" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="2 4" />
-            <circle cx="200" cy="200" r="124" fill="none" stroke="rgba(255,59,48,0.2)" stroke-width="0.8" />
-            <circle cx="200" cy="200" r="46" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
-
-            <!-- 60 Ticks -->
-            <g id="clock-ticks">
-              <line x1="200.0" y1="36.0" x2="200.0" y2="22.0" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="217.9" y1="29.9" x2="218.6" y2="23.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="235.6" y1="32.7" x2="237.0" y2="25.9" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="252.8" y1="37.4" x2="255.0" y2="30.7" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="269.6" y1="43.8" x2="272.4" y2="37.4" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="282.0" y1="58.0" x2="289.0" y2="45.8" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="300.5" y1="61.7" x2="304.6" y2="56.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="314.4" y1="72.9" x2="319.1" y2="67.7" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="327.1" y1="85.6" x2="332.3" y2="80.9" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="338.3" y1="99.5" x2="344.0" y2="95.4" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="342.0" y1="118.0" x2="354.2" y2="111.0" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="356.2" y1="130.4" x2="362.6" y2="127.6" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="362.6" y1="147.2" x2="369.3" y2="145.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="367.3" y1="164.4" x2="374.1" y2="163.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="370.1" y1="182.1" x2="377.0" y2="181.4" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="364.0" y1="200.0" x2="378.0" y2="200.0" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="370.1" y1="217.9" x2="377.0" y2="218.6" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="367.3" y1="235.6" x2="374.1" y2="237.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="362.6" y1="252.8" x2="369.3" y2="255.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="356.2" y1="269.6" x2="362.6" y2="272.4" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="342.0" y1="282.0" x2="354.2" y2="289.0" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="338.3" y1="300.5" x2="344.0" y2="304.6" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="327.1" y1="314.4" x2="332.3" y2="319.1" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="314.4" y1="327.1" x2="319.1" y2="332.3" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="300.5" y1="338.3" x2="304.6" y2="344.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="282.0" y1="342.0" x2="289.0" y2="354.2" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="269.6" y1="356.2" x2="272.4" y2="362.6" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="252.8" y1="362.6" x2="255.0" y2="369.3" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="235.6" y1="367.3" x2="237.0" y2="374.1" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="217.9" y1="370.1" x2="218.6" y2="377.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="200.0" y1="364.0" x2="200.0" y2="378.0" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="182.1" y1="370.1" x2="181.4" y2="377.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="164.4" y1="367.3" x2="163.0" y2="374.1" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="147.2" y1="362.6" x2="145.0" y2="369.3" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="130.4" y1="356.2" x2="127.6" y2="362.6" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="118.0" y1="342.0" x2="111.0" y2="354.2" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="99.5" y1="338.3" x2="95.4" y2="344.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="85.6" y1="327.1" x2="80.9" y2="332.3" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="72.9" y1="314.4" x2="67.7" y2="319.1" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="61.7" y1="300.5" x2="56.0" y2="304.6" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="58.0" y1="282.0" x2="45.8" y2="289.0" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="43.8" y1="269.6" x2="37.4" y2="272.4" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="37.4" y1="252.8" x2="30.7" y2="255.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="32.7" y1="235.6" x2="25.9" y2="237.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="29.9" y1="217.9" x2="23.0" y2="218.6" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="36.0" y1="200.0" x2="22.0" y2="200.0" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="29.9" y1="182.1" x2="23.0" y2="181.4" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="32.7" y1="164.4" x2="25.9" y2="163.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="37.4" y1="147.2" x2="30.7" y2="145.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="43.8" y1="130.4" x2="37.4" y2="127.6" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="58.0" y1="118.0" x2="45.8" y2="111.0" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="61.7" y1="99.5" x2="56.0" y2="95.4" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="72.9" y1="85.6" x2="67.7" y2="80.9" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="85.6" y1="72.9" x2="80.9" y2="67.7" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="99.5" y1="61.7" x2="95.4" y2="56.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="118.0" y1="58.0" x2="111.0" y2="45.8" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <line x1="130.4" y1="43.8" x2="127.6" y2="37.4" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="147.2" y1="37.4" x2="145.0" y2="30.7" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="164.4" y1="32.7" x2="163.0" y2="25.9" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-              <line x1="182.1" y1="29.9" x2="181.4" y2="23.0" stroke="rgba(255,255,255,0.32)" stroke-width="1" stroke-linecap="round" />
-            </g>
-
-            <!-- Dial Inscriptions -->
-            <text x="200" y="150" class="clock-label-top">NO TIME TO BLIND</text>
-            <text x="200" y="258" class="clock-label-sub">◄ 2475 ►</text>
-
-            <!-- Clock Hands -->
-            <g id="clock-hour-hand" class="clock-hand" style="transform-origin: 200px 200px;">
-              <polygon points="196,200 197.5,120 200,105 202.5,120 204,200" fill="#ffffff" />
-              <path d="M 197 200 L 196 220 A 4 4 0 0 0 204 220 L 203 200 Z" fill="#ffffff" opacity="0.9" />
-              <line x1="200" y1="110" x2="200" y2="195" stroke="#999999" stroke-width="0.8" />
-            </g>
-            <g id="clock-minute-hand" class="clock-hand" style="transform-origin: 200px 200px;">
-              <polygon points="197,200 198,72 200,58 202,72 203,200" fill="#ffffff" />
-              <path d="M 197.5 200 L 197 226 A 3 3 0 0 0 203 226 L 202.5 200 Z" fill="#ffffff" opacity="0.9" />
-              <line x1="200" y1="64" x2="200" y2="195" stroke="#aaaaaa" stroke-width="0.8" />
-            </g>
-            <g id="clock-second-hand" class="clock-hand" style="transform-origin: 200px 200px;">
-              <line x1="200" y1="200" x2="200" y2="242" stroke="#ff3b30" stroke-width="2.5" stroke-linecap="round" />
-              <circle cx="200" cy="228" r="4.5" fill="#ff3b30" />
-              <line x1="200" y1="200" x2="200" y2="40" stroke="#ff3b30" stroke-width="1.8" stroke-linecap="round" />
-              <circle cx="200" cy="74" r="5" fill="#ff3b30" fill-opacity="0.2" stroke="#ff3b30" stroke-width="1.8" />
-              <circle cx="200" cy="74" r="1.5" fill="#ffffff" />
-            </g>
-
-            <!-- Center Jewel Hub -->
-            <circle cx="200" cy="200" r="9" fill="#08080a" stroke="#ffffff" stroke-width="2" />
-            <circle cx="200" cy="200" r="4.5" fill="#ff3b30" />
-          </svg>
-        </div>
+      <div class="hero-poster-wrap">
+        <img src="assets/poster.jpg?v=1" alt="Poster แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์" style="width: 100%; max-width: 350px; height: auto; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.15); display: block; margin: 0 auto;" />
       </div>
     </div>
     <a href="#show-info" class="scroll-down-hint" aria-label="เลื่อนลงเพื่อดูรายละเอียดเพิ่มเติม">
