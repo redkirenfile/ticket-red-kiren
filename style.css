@@ -60,17 +60,11 @@ body::before {
 /* ============================================================
    LANDING PAGE
    ============================================================ */
+#view-landing {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.70) 50%, rgba(0, 0, 0, 0.92) 100%), url('assets/hero-bg.jpg?v=2') center top / cover no-repeat fixed;
+}
 .landing-bg {
-  display: block;
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 0;
-  background-image: linear-gradient(180deg, rgba(8, 8, 10, 0.75) 0%, rgba(8, 8, 10, 0.88) 50%, rgba(8, 8, 10, 0.98) 100%), url('assets/hero-bg.jpg?v=1');
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-  opacity: 0.55;
-  pointer-events: none;
+  display: none;
 }
 
 .site-header {
