@@ -168,7 +168,7 @@ body::before {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1fr auto;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 60px;
   padding: 120px 80px 80px;
   max-width: 1400px;
@@ -314,21 +314,20 @@ body::before {
   position: relative;
   display: flex;
   justify-content: flex-start;
-  align-items: stretch;
+  align-items: flex-start;
   background: transparent;
   border: none;
   box-shadow: none;
-  height: 100%;
+  width: 100%;
 }
 .poster-img {
   position: relative;
   z-index: 1;
-  height: 100%;
-  width: auto;
-  max-height: 100%;
-  object-fit: contain;
+  width: 100%;
+  max-width: 440px;
+  height: auto;
   border-radius: var(--radius-md, 14px);
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.6), 0 5px 14px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.7), 0 6px 18px rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: block;
 }
