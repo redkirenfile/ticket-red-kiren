@@ -170,7 +170,7 @@ body::before {
   grid-template-columns: minmax(0, 520px) auto;
   justify-content: center;
   align-items: flex-start;
-  gap: 16px;
+  gap: 0px;
   padding: 120px 40px 80px;
   max-width: 1100px;
   margin: 0 auto;
@@ -321,7 +321,7 @@ body::before {
   box-shadow: none;
   width: 100%;
   margin-top: 18px;
-  margin-left: -40px;
+  margin-left: -120px;
 }
 .poster-img {
   position: relative;
