@@ -4,10 +4,10 @@
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────
 const CONFIG = {
-  showName: 'น่าจะรู้อย่างนี้ตั้งแต่ปี 2475 NO TIME TO BLIND',
-  showNameEn: 'NO TIME TO BLIND',
-  venue: 'KINJAI CONTEMPORARY (MRT สิรินธร)',
-  dates: '16–25 ตุลาคม 2569',
+  showName: 'แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์',
+  showNameEn: 'Red Kiren File : Massacre at Mount Zero',
+  venue: 'HostBBK (MRT ลุมพินี)',
+  dates: '10–11 ตุลาคม 2569',
   maxQty: 10,
   slotCapacity: 65, // ← จำนวนที่นั่งสูงสุดต่อรอบ (ค่าพื้นฐานเริ่มต้น 65)
 
@@ -16,38 +16,32 @@ const CONFIG = {
 
   // ── ตารางรอบการแสดง ──
   schedule: [
-    { id:'w1-fri', week:1, day:'ศุกร์',    date:'16', month:'ต.ค.', year:'2569', dateLabel:'ศุกร์ที่ 16 ต.ค. 2569',    slots:['19:00'] },
-    { id:'w1-sat', week:1, day:'เสาร์',   date:'17', month:'ต.ค.', year:'2569', dateLabel:'เสาร์ที่ 17 ต.ค. 2569',   slots:['14:00','19:00'] },
-    { id:'w1-sun', week:1, day:'อาทิตย์', date:'18', month:'ต.ค.', year:'2569', dateLabel:'อาทิตย์ที่ 18 ต.ค. 2569', slots:['14:00','19:00'] },
-    { id:'w2-fri', week:2, day:'ศุกร์',    date:'23', month:'ต.ค.', year:'2569', dateLabel:'ศุกร์ที่ 23 ต.ค. 2569',    slots:['14:00','19:00'] },
-    { id:'w2-sat', week:2, day:'เสาร์',   date:'24', month:'ต.ค.', year:'2569', dateLabel:'เสาร์ที่ 24 ต.ค. 2569',   slots:['14:00','19:00'] },
-    { id:'w2-sun', week:2, day:'อาทิตย์', date:'25', month:'ต.ค.', year:'2569', dateLabel:'อาทิตย์ที่ 25 ต.ค. 2569', slots:['14:00','19:00'] },
+    { id:'w1-sat', week:1, day:'เสาร์',   date:'10', month:'ต.ค.', year:'2569', dateLabel:'เสาร์ที่ 10 ต.ค. 2569',   slots:['13:00','19:00'] },
+    { id:'w1-sun', week:1, day:'อาทิตย์', date:'11', month:'ต.ค.', year:'2569', dateLabel:'อาทิตย์ที่ 11 ต.ค. 2569', slots:['13:00','19:00'] },
   ],
 
   ticketTypes: [
-    { id:'pro-after-6', name:'PRO AFTER 6', desc:'โปรโมชั่นพิเศษ PRO AFTER 6', price:350, badge:'promo',   badgeText:'🔥 PRO AFTER 6', available:false },
-    { id:'earlybird',   name:'EARLYBIRD',   desc:'โปรโมชั่น Early Bird ราคาพิเศษ', price:390, badge:'early',   badgeText:'🐦 EARLYBIRD',   available:true },
-    { id:'pro-6-oct',   name:'PRO 6 ตุลา',  desc:'โปรโมชั่นพิเศษ PRO 6 ตุลา',   price:590, badge:'promo',   badgeText:'⭐ PRO 6 ตุลา',  available:false },
-    { id:'regular',     name:'REGULAR',     desc:'บัตรราคาปกติ',               price:690, badge:'regular', badgeText:'🎭 REGULAR',     available:true },
+    { id:'earlybird',   name:'EARLYBIRD',   desc:'โปรโมชั่น Early Bird ราคาพิเศษ 500 บาท', price:500, badge:'early',   badgeText:'🐦 EARLYBIRD',   available:true },
+    { id:'student',     name:'STUDENT',     desc:'บัตรนักเรียน/นักศึกษา ราคาพิเศษ 550 บาท', price:550, badge:'student', badgeText:'🎓 STUDENT',     available:true },
+    { id:'regular',     name:'REGULAR',     desc:'บัตรราคาปกติ 900 บาท',               price:900, badge:'regular', badgeText:'🎭 REGULAR',     available:true },
     { id:'quota-free',      name:'โควต้าฟรี', desc:'โควต้าพิเศษสำหรับทีมงาน/ Staff', price:0,   badge:'quota', badgeText:'🎟️ โควต้าฟรี', available:false },
-    { id:'quota-earlybird', name:'โควต้าราคา Early Bird', desc:'โควต้าพิเศษราคา Early Bird', price:390, badge:'quota', badgeText:'🎟️ โควต้า Early Bird', available:false },
+    { id:'quota-earlybird', name:'โควต้าราคา Early Bird', desc:'โควต้าพิเศษราคา Early Bird', price:500, badge:'quota', badgeText:'🎟️ โควต้า Early Bird', available:false },
     { id:'quota-spon',      name:'โควต้า Spon', desc:'โควต้าพิเศษสำหรับสปอนเซอร์', price:0, badge:'quota', badgeText:'🎟️ โควต้า Spon', available:false },
   ],
 
   bankAccount: {
-    bank:        'ธนาคารกสิกรไทย (KBank)',
-    accountNo:   '0001234567',
-    accountName: 'บจก. น่าจะรู้อย่างนี้ตั้งแต่ปี 2475 โปรดักชั่น',
-    promptpay:   '0901234567',
+    bank:        'ธนาคารไทยพาณิชย์ (SCB)',
+    accountNo:   '420-225549-7',
+    accountName: 'นายวิธวินท์ ธนะชัย',
+    promptpay:   '4202255497',
   },
 };
 
 // ─── GLOBAL CONFIG (Ticket Types & Pricing state shared across devices) ──────
 let GLOBAL_TICKET_CONFIG = {
-  'pro-after-6': { enabled: false, price: 350 },
-  'earlybird':   { enabled: true,  price: 390 },
-  'pro-6-oct':   { enabled: false, price: 590 },
-  'regular':     { enabled: true,  price: 690 },
+  'earlybird':   { enabled: true,  price: 500 },
+  'student':     { enabled: true,  price: 550 },
+  'regular':     { enabled: true,  price: 900 },
 };
 // Legacy compatibility
 let GLOBAL_EARLYBIRD_ENABLED = true;

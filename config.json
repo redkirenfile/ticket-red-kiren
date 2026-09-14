@@ -1,9 +1,8 @@
 {
   "earlybird_enabled": true,
   "ticket_config": {
-    "pro-after-6": { "enabled": false, "price": 350 },
-    "earlybird":   { "enabled": true,  "price": 390 },
-    "pro-6-oct":   { "enabled": false, "price": 590 },
-    "regular":     { "enabled": true,  "price": 690 }
+    "earlybird":   { "enabled": true,  "price": 500 },
+    "student":     { "enabled": true,  "price": 550 },
+    "regular":     { "enabled": true,  "price": 900 }
   }
 }
