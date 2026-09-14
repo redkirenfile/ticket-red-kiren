@@ -47,8 +47,8 @@
   <section class="hero">
     <div class="hero-content">
       <h1 class="hero-title">
-        <span style="font-size: 0.88em; font-weight: 700; color: #ffffff; display: block; line-height: 1.35; margin-bottom: 6px;">แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์</span>
-        <span style="color: #ff3b30; display: block; font-size: 1.05em; letter-spacing: 1px; line-height: 1.25;">Red Kiren File : Massacre at Mount Zero</span>
+        <span style="font-size: clamp(0.72rem, 3.4vw, 1.45rem); font-weight: 700; color: #ffffff; display: block; line-height: 1.35; margin-bottom: 6px; white-space: nowrap;">แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์</span>
+        <span style="color: #ff3b30; display: block; font-size: clamp(0.72rem, 3.5vw, 1.25rem); letter-spacing: 0.5px; line-height: 1.25; white-space: nowrap;">Red Kiren File : Massacre at Mount Zero</span>
       </h1>
       <div class="hero-synopsis">
         <p style="margin-bottom: 12px; font-weight: 600; color: #ff3b30;">
@@ -66,7 +66,7 @@
       </div>
       <div class="hero-meta">
         <div class="meta-item">📅 10–11 ตุลาคม 2569</div>
-        <div class="meta-item"><ctrl42> 2 รอบการแสดง (13:00 น. และ 19:00 น.)</div>
+        <div class="meta-item">🕖 2 รอบการแสดง (13:00 น. และ 19:00 น.)</div>
         <div class="meta-item"><a href="https://maps.app.goo.gl/EnthUM3NimTEpAGMA?g_st=ic" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">📍 HostBBK (MRT ลุมพินี)</a></div>
       </div>
       <button id="btn-buy-hero" class="btn-primary btn-lg" onclick="goTo('ticket')">
@@ -75,9 +75,7 @@
       </button>
     </div>
     <div class="hero-poster">
-      <div class="hero-poster-wrap">
-        <img src="assets/poster.jpg?v=1" alt="Poster แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์" style="width: 100%; max-width: 350px; height: auto; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.15); display: block; margin: 0 auto;" />
-      </div>
+      <img id="poster-img" src="assets/poster.jpg?v=2" alt="โปสเตอร์ แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์" class="poster-img" />
     </div>
     <a href="#show-info" class="scroll-down-hint" aria-label="เลื่อนลงเพื่อดูรายละเอียดเพิ่มเติม">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>

@@ -310,7 +310,6 @@ body::before {
 
 .hero-note { font-size: 0.85rem; color: var(--text-muted); margin-top: -8px; }
 
-/* POSTER */
 .hero-poster {
   position: relative;
   display: flex;
@@ -319,16 +318,18 @@ body::before {
   background: transparent;
   border: none;
   box-shadow: none;
-}
-.backward-clock-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
   width: 100%;
-  max-width: 400px;
+}
+.poster-img {
   position: relative;
-  animation: floatClock 8s ease-in-out infinite;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 8px 20px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: block;
+  margin: 0 auto;
 }
 
 @keyframes floatClock {
@@ -1611,8 +1612,8 @@ body::before {
   }
   .hero-content { align-items: center; }
   .hero-meta { justify-content: center; }
-  .hero-poster { order: -1; }
-  .backward-clock-card { max-width: 320px; }
+  .hero-poster { order: -1; margin-bottom: 24px; }
+  .poster-img { max-width: 340px; }
   .info-grid { flex-direction: column; align-items: center; }
 }
 
