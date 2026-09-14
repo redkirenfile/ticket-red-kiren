@@ -980,7 +980,7 @@ function downloadTicket(idx) {
 
   ctx.fillStyle = '#52525b';
   ctx.font      = '10px sans-serif';
-  ctx.fillText('KINJAI CONTEMPORARY (MRT สิรินธร)', tc.width / 2, 470);
+  ctx.fillText('HostBBK (MRT ลุมพินี)', tc.width / 2, 470);
 
   const link    = document.createElement('a');
   link.download = `ticket-${ticket.ticketId}.png`;
