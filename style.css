@@ -324,9 +324,9 @@ body::before {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 220px;
-  border-radius: var(--radius-md, 12px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.3);
+  max-width: 280px;
+  border-radius: var(--radius-md, 14px);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.6), 0 5px 14px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: block;
   margin: 0 auto;
@@ -1612,8 +1612,8 @@ body::before {
   }
   .hero-content { align-items: center; }
   .hero-meta { justify-content: center; }
-  .hero-poster { order: -1; margin-bottom: 16px; }
-  .poster-img { max-width: 180px; }
+  .hero-poster { order: -1; margin-bottom: 18px; }
+  .poster-img { max-width: 220px; }
   .info-grid { flex-direction: column; align-items: center; }
 }
 
