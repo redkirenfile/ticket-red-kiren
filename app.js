@@ -153,13 +153,7 @@ function getSlotKey(dateId, slot) {
 }
 
 function getSlotCapacity(dateId, slot) {
-  const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
-  const key   = getSlotKey(dateId, slot);
-  const val   = Number(stock[key]);
-  if (!isNaN(val) && val > 0 && val !== 85 && val !== 84 && val !== 82 && val !== 80 && val !== 65 && val !== 50) {
-    return val;
-  }
-  return CONFIG.slotCapacity;
+  return CONFIG.slotCapacity; // ล็อค 800 ที่นั่งต่อรอบตายตัว
 }
 
 function getSoldCountForSlot(dateId, slot) {

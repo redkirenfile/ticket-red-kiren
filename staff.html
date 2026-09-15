@@ -1053,15 +1053,14 @@
   <!-- STOCK MANAGEMENT -->
   <div class="card" id="stock-card">
     <div class="card-header">
-      <span class="card-title">📦 จัดการ Stock บัตรแต่ละรอบ</span>
+      <span class="card-title">📦 ข้อมูล Stock บัตรแต่ละรอบ</span>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-check" onclick="resetAllCapacityTo800()" style="font-size:0.78rem;padding:5px 12px;background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.3);color:#86efac;">⚡ ตั้งทุกรอบเป็น 800 ที่</button>
         <button class="btn btn-check" onclick="renderStockTable()" style="font-size:0.78rem;padding:5px 12px;">🔄 รีเฟรช</button>
       </div>
     </div>
     <div class="stock-wrap" id="stock-table-wrap"></div>
     <div class="stock-footer">
-      <span>🟣 Capacity = จำนวนที่นั่งสูงสุดที่ตั้งไว้</span>
+      <span>🟣 Capacity = ล็อค 800 ที่นั่งต่อรอบ</span>
       <span>⚫ ขายแล้ว = บัตรที่ถูกจองจริง</span>
       <span>🟢 คงเหลือ = ยังซื้อได้</span>
     </div>
@@ -1142,12 +1141,7 @@ const DEFAULT_CAPACITY = 800;
 function getSlotKey(dateId, slot) { return `${dateId}|${slot}`; }
 
 function getSlotCapacity(key) {
-  const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
-  const val = Number(stock[key]);
-  if (!isNaN(val) && val > 0 && val !== 85 && val !== 84 && val !== 82 && val !== 80 && val !== 65 && val !== 50) {
-    return val;
-  }
-  return DEFAULT_CAPACITY;
+  return DEFAULT_CAPACITY; // ล็อค 800 ที่นั่งต่อรอบ
 }
 
 function getStaffSoldCount(dateId, slot) {
@@ -2599,20 +2593,11 @@ function renderStockTable() {
       const remClass = isFull ? 'stock-zero' : isLow ? 'stock-low' : 'stock-ok';
       const label = makeShowDateLabel(d.dateLabel, slot);
       const soldOut = isFull ? `<span class="stock-soldout-badge">SOLD OUT</span>` : '';
-      const inputId = `si_${d.id}_${slot.replace(':', '')}`;
-
       rows += `<tr class="${isFull ? 'stock-row-full' : ''}">
         <td class="stock-label">${escHtml(label)}${soldOut}</td>
         <td class="stock-num stock-cap">${cap}</td>
         <td class="stock-num stock-sold">${sold}</td>
         <td class="stock-num ${remClass}">${rem}</td>
-        <td class="stock-actions">
-          <button class="btn-stock-adj" onclick="adjustCapacity('${key}', -1)">−</button>
-          <input type="number" class="stock-input" id="${inputId}" value="${cap}"
-                 min="${sold}" max="999"
-                 onchange="setCapacity('${key}', this.value)" />
-          <button class="btn-stock-adj" onclick="adjustCapacity('${key}', 1)">+</button>
-        </td>
       </tr>`;
     });
   });
@@ -2624,7 +2609,6 @@ function renderStockTable() {
         <th style="text-align:center">🟣 Capacity</th>
         <th style="text-align:center">⬤ ขายแล้ว</th>
         <th style="text-align:center">🟢 คงเหลือ</th>
-        <th style="text-align:right">ปรับ Capacity</th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr style="border-top:2px solid rgba(255,255,255,0.12);font-weight:700">
@@ -2632,7 +2616,6 @@ function renderStockTable() {
         <td class="stock-num stock-cap">${totalCap}</td>
         <td class="stock-num stock-sold">${totalSold}</td>
         <td class="stock-num ${totalRem <= 0 ? 'stock-zero' : totalRem <= 20 ? 'stock-low' : 'stock-ok'}">${totalRem}</td>
-        <td></td>
       </tr></tfoot>
     </table>`;
 }
