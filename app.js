@@ -9,7 +9,7 @@ const CONFIG = {
   venue: 'HostBBK (MRT ลุมพินี)',
   dates: '10–11 ตุลาคม 2569',
   maxQty: 10,
-  slotCapacity: 65, // ← จำนวนที่นั่งสูงสุดต่อรอบ (ค่าพื้นฐานเริ่มต้น 65)
+  slotCapacity: 800, // ← จำนวนที่นั่งสูงสุดต่อรอบ (ค่าพื้นฐานเริ่มต้น 800)
 
   // ⬇️ ใส่ URL ของ Google Apps Script ที่ deploy แล้วตรงนี้
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxZYQLm5WLNKL4NqGXXRPQFHaldQTCMwb5oaENmMqGHVGC4Aqcy87JnR2oyX9MZtwCECw/exec',
@@ -156,7 +156,7 @@ function getSlotCapacity(dateId, slot) {
   const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
   const key   = getSlotKey(dateId, slot);
   const val   = Number(stock[key]);
-  if (!isNaN(val) && val > 0 && val !== 85 && val !== 80 && val !== 50) {
+  if (!isNaN(val) && val > 0 && val !== 85 && val !== 84 && val !== 82 && val !== 80 && val !== 65 && val !== 50) {
     return val;
   }
   return CONFIG.slotCapacity;
@@ -1047,15 +1047,15 @@ function showToast(msg, type = '') {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Auto-migrate legacy stock values to 80
+  // Auto-migrate legacy stock values to 800
   try {
     const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
     let changed = false;
     CONFIG.schedule.forEach(d => {
       d.slots.forEach(slot => {
         const key = getSlotKey(d.id, slot);
-        if (stock[key] === 85 || stock[key] === 84 || stock[key] === 82 || typeof stock[key] !== 'number') {
-          stock[key] = 80;
+        if (typeof stock[key] !== 'number' || stock[key] === 85 || stock[key] === 84 || stock[key] === 82 || stock[key] === 80 || stock[key] === 65 || stock[key] === 50) {
+          stock[key] = 800;
           changed = true;
         }
       });

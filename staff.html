@@ -1055,7 +1055,7 @@
     <div class="card-header">
       <span class="card-title">📦 จัดการ Stock บัตรแต่ละรอบ</span>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-check" onclick="resetAllCapacityTo65()" style="font-size:0.78rem;padding:5px 12px;background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.3);color:#86efac;">⚡ ตั้งทุกรอบเป็น 65 ที่</button>
+        <button class="btn btn-check" onclick="resetAllCapacityTo800()" style="font-size:0.78rem;padding:5px 12px;background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.3);color:#86efac;">⚡ ตั้งทุกรอบเป็น 800 ที่</button>
         <button class="btn btn-check" onclick="renderStockTable()" style="font-size:0.78rem;padding:5px 12px;">🔄 รีเฟรช</button>
       </div>
     </div>
@@ -1136,7 +1136,7 @@ const SCHEDULE = [
   { id:'w1-sat', dateLabel:'เสาร์ที่ 10 ต.ค. 2569',   slots:['13:00','19:00'] },
   { id:'w1-sun', dateLabel:'อาทิตย์ที่ 11 ต.ค. 2569', slots:['13:00','19:00'] },
 ];
-const DEFAULT_CAPACITY = 65;
+const DEFAULT_CAPACITY = 800;
 
 // ═ SLOT HELPERS ═════════════════════════════════════════════════
 function getSlotKey(dateId, slot) { return `${dateId}|${slot}`; }
@@ -1144,7 +1144,7 @@ function getSlotKey(dateId, slot) { return `${dateId}|${slot}`; }
 function getSlotCapacity(key) {
   const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
   const val = Number(stock[key]);
-  if (!isNaN(val) && val > 0 && val !== 85 && val !== 80 && val !== 50) {
+  if (!isNaN(val) && val > 0 && val !== 85 && val !== 84 && val !== 82 && val !== 80 && val !== 65 && val !== 50) {
     return val;
   }
   return DEFAULT_CAPACITY;
@@ -1266,8 +1266,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     SCHEDULE.forEach(d => {
       d.slots.forEach(slot => {
         const key = getSlotKey(d.id, slot);
-        if (typeof stock[key] !== 'number' || stock[key] <= 0 || stock[key] === 50 || stock[key] === 80 || stock[key] === 85) {
-          stock[key] = 65;
+        if (typeof stock[key] !== 'number' || stock[key] <= 0 || stock[key] === 50 || stock[key] === 65 || stock[key] === 80 || stock[key] === 82 || stock[key] === 84 || stock[key] === 85) {
+          stock[key] = 800;
           changed = true;
         }
       });
@@ -2162,8 +2162,8 @@ async function syncAllFromSheets(silent = false) {
               const slotKey = key.replace('capacity|', '');
               const parsedVal = parseInt(data.settings[key], 10);
               if (!isNaN(parsedVal) && parsedVal >= 0) {
-                if (parsedVal === 85 || parsedVal === 84 || parsedVal === 82 || parsedVal === 80 || parsedVal === 50) {
-                  stock[slotKey] = 65;
+                if (parsedVal === 85 || parsedVal === 84 || parsedVal === 82 || parsedVal === 80 || parsedVal === 65 || parsedVal === 50) {
+                  stock[slotKey] = 800;
                 } else {
                   stock[slotKey] = parsedVal;
                 }
@@ -2637,18 +2637,18 @@ function renderStockTable() {
     </table>`;
 }
 
-function resetAllCapacityTo65() {
+function resetAllCapacityTo800() {
   const stock = {};
   SCHEDULE.forEach(d => {
     d.slots.forEach(slot => {
       const key = getSlotKey(d.id, slot);
-      stock[key] = 65;
-      syncCapacityToSheets(key, 65);
+      stock[key] = 800;
+      syncCapacityToSheets(key, 800);
     });
   });
   localStorage.setItem('theater_stock', JSON.stringify(stock));
   renderStockTable();
-  showToastStaff('✅ ปรับ Capacity ทุกรอบเป็น 65 ที่นั่งเรียบร้อยแล้ว!');
+  showToastStaff('✅ ปรับ Capacity ทุกรอบเป็น 800 ที่นั่งเรียบร้อยแล้ว!');
 }
 
 async function adjustCapacity(key, delta) {
