@@ -1,8 +1,10 @@
-// 🔑 ฟังก์ชันสำหรับกดปุ่ม "เรียกใช้ (Run)" 1 ครั้งเพื่อกดยืนยันสิทธิ์ Google Drive ให้ระบบ
-function authorizeDrive() {
-  DriveApp.getRootFolder();
-  SpreadsheetApp.getActiveSpreadsheet();
-  Logger.log("✅ ยืนยันสิทธิ์ Google Drive และ Google Sheets สำเร็จแล้ว!");
+// 🔑 ฟังก์ชันสำหรับกดปุ่ม "เรียกใช้ (Run)" 1 ครั้งเพื่อกดยืนยันสิทธิ์สร้างไฟล์ใน Google Drive
+function setupPermission() {
+  // สร้างและลบไฟล์ทดสอบทันที เพื่อบังคับให้ Google ขอสิทธิ์ Write เข้า Google Drive
+  const testFile = DriveApp.createFile("test_drive_permission.txt", "test");
+  testFile.setTrashed(true);
+  const ss = getSS();
+  Logger.log("✅ ยืนยันสิทธิ์ Google Drive และ Google Sheets สำเร็จ 100% แล้ว!");
 }
 
 function getSS() {
@@ -17,28 +19,10 @@ function getSS() {
  * ============================================================
  * Google Apps Script — แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์ (Red Kiren File) Theater Ticket Backend (Updated & Optimized)
  * ============================================================
- *
- * วิธีติดตั้ง:
- * 1. ไปที่ https://script.google.com → สร้างโปรเจกต์ใหม่
- * 2. วางโค้ดนี้ทั้งหมดในไฟล์ Code.gs
- * 3. แก้ SPREADSHEET_ID ให้ตรงกับ Google Sheet ของคุณ
- * 4. กด Deploy → New deployment → Web app
- *    - Execute as: Me
- *    - Who has access: Anyone
- * 5. Copy URL ที่ได้ ไปวางใน CONFIG.APPS_SCRIPT_URL ในไฟล์ app.js
- *    และ APPS_SCRIPT_URL ในไฟล์ staff.html
- *
- * โครงสร้าง Google Sheet:
- * - Sheet1 "Orders" — รายการคำสั่งซื้อ
- * - Sheet2 "Tickets" — รายการบัตรแต่ละใบ
- * - Sheet3 "CheckIns" — log การเช็คอิน
- * - Sheet4 "Settings" — เก็บการตั้งค่าส่วนกลาง (เช่น เปิด/ปิด Early Bird)
- * ============================================================
  */
 
-// ⚠️ แก้ค่านี้: ใส่ ID ของ Google Sheet ของคุณ
-// (เอาจาก URL: https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit)
-const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE';
+// ใส่ ID ของ Google Sheet ของคุณโดยตรง
+const SPREADSHEET_ID = '15RKxq6rzJXtN5R77cxdPZNp_JU6rDOE12ijuysTM76w';
 
 // Sheet names
 const SHEET_ORDERS   = 'Orders';
@@ -653,16 +637,25 @@ function handleNewOrder(data) {
       const fileName = `slip-${data.orderId}${cleanName ? '-' + cleanName : ''}.${ext}`;
       const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
       
-      let folder;
-      const folderName = 'Theater Slips - แฟ้มคดีกิเลนแดง';
-      const folders = DriveApp.getFoldersByName(folderName);
-      if (folders.hasNext()) {
-        folder = folders.next();
-      } else {
-        folder = DriveApp.createFolder(folderName);
+      let file;
+      try {
+        let folder;
+        const folderName = 'Theater Slips - แฟ้มคดีกิเลนแดง';
+        const folders = DriveApp.getFoldersByName(folderName);
+        if (folders.hasNext()) {
+          folder = folders.next();
+        } else {
+          folder = DriveApp.createFolder(folderName);
+        }
+        file = folder.createFile(blob);
+      } catch(folderErr) {
+        file = DriveApp.createFile(blob);
       }
-      const file = folder.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+      try {
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch(shareErr) {}
+      
       file.setDescription(`เลขที่คำสั่งซื้อ: ${data.orderId}\nผู้จอง: ${data.name || '—'}\nเบอร์โทร: ${data.phone || '—'}\nรอบการแสดง: ${data.showDate || '—'}\nเวลาทำรายการ: ${data.timestamp || ''}`);
       const fileId = file.getId();
       slipUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
