@@ -21,7 +21,7 @@ const CONFIG = {
   ],
 
   ticketTypes: [
-    { id:'earlybird',   name:'EARLYBIRD',   desc:'โปรโมชั่น Early Bird ราคาพิเศษ 500 บาท', price:500, badge:'early',   badgeText:'🐦 EARLYBIRD',   available:true },
+    { id:'earlybird',   name:'EARLYBIRD',   desc:'โปรโมชั่น Early Bird ราคาพิเศษ 500 บาท (จำกัด 50 ใบ/รอบ)', price:500, badge:'early',   badgeText:'🐦 EARLYBIRD',   available:true },
     { id:'student',     name:'STUDENT',     desc:'บัตรนักเรียน/นักศึกษา ราคาพิเศษ 550 บาท', price:550, badge:'student', badgeText:'🎓 STUDENT',     available:true },
     { id:'regular',     name:'REGULAR',     desc:'บัตรราคาปกติ 900 บาท',               price:900, badge:'regular', badgeText:'🎭 REGULAR',     available:true },
   ],
@@ -115,6 +115,9 @@ async function fetchGlobalConfig() {
           if (data.soldCounts || data.showCounts) {
             localStorage.setItem('theater_sold_counts', JSON.stringify(data.soldCounts || data.showCounts));
           }
+          if (data.soldCountsByType) {
+            localStorage.setItem('theater_sold_counts_by_type', JSON.stringify(data.soldCountsByType));
+          }
           // บันทึกค่า Capacity ที่ปรับปรุงจาก Sheets ลงใน localStorage 'theater_stock'
           const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
           Object.keys(data).forEach(key => {
@@ -182,6 +185,38 @@ function getSoldCountForSlot(dateId, slot) {
 
 function getRemainingSeats(dateId, slot) {
   return Math.max(0, getSlotCapacity(dateId, slot) - getSoldCountForSlot(dateId, slot));
+}
+
+// ─── EARLY BIRD QUOTA (50 ที่นั่งต่อรอบ) ───────────────────────────────────
+const EARLYBIRD_SLOT_QUOTA = 50;
+
+function getEarlybirdSoldCount(dateId, slot) {
+  const dateObj = CONFIG.schedule.find(d => d.id === dateId);
+  if (!dateObj) return 0;
+  const showDateLabel = `${dateObj.dateLabel} · ${slot} น.`;
+
+  const syncedSoldByType = JSON.parse(localStorage.getItem('theater_sold_counts_by_type') || '{}');
+  const centralEB = typeof syncedSoldByType[`${showDateLabel}|earlybird`] === 'number'
+    ? syncedSoldByType[`${showDateLabel}|earlybird`]
+    : 0;
+
+  const localTickets = JSON.parse(localStorage.getItem('theater_tickets') || '{}');
+  const localEB = Object.values(localTickets).filter(t => {
+    if (t.cancelled) return false;
+    const isEB = t.typeId === 'earlybird' || (t.type && String(t.type).toUpperCase().includes('EARLY'));
+    if (!isEB) return false;
+    if (t.showDateId && t.showSlot) {
+      return t.showDateId === dateId && t.showSlot === slot;
+    }
+    return t.showDate === showDateLabel;
+  }).length;
+
+  return Math.max(localEB, centralEB);
+}
+
+function getEarlybirdRemainingSeats(dateId, slot) {
+  const sold = getEarlybirdSoldCount(dateId, slot);
+  return Math.max(0, EARLYBIRD_SLOT_QUOTA - sold);
 }
 
 // ─── FORM STATE PRESERVATION ──────────────────────────────────────────────
@@ -272,7 +307,21 @@ function goTo(view) {
       }, 180);
     }
   }
-  if (view === 'info')    { renderRecap(); restoreForm(); }
+  if (view === 'info') {
+    if (state.selectedTypeId === 'earlybird' && state.selectedDateId && state.selectedSlot) {
+      const ebRem = getEarlybirdRemainingSeats(state.selectedDateId, state.selectedSlot);
+      if (ebRem <= 0) {
+        showToast('❌ โควต้าบัตร Early Bird สำหรับรอบนี้ครบ 50 ใบแล้ว กรุณาเลือกบัตรประเภทอื่น', 'error');
+        return;
+      }
+      if (state.qty > ebRem) {
+        showToast(`❌ โควต้าบัตร Early Bird สำหรับรอบนี้เหลือเพียง ${ebRem} ใบ`, 'error');
+        return;
+      }
+    }
+    renderRecap();
+    restoreForm();
+  }
   if (view === 'confirm' && state.currentOrder) renderConfirmation();
 }
 
@@ -423,8 +472,17 @@ function renderTicketTypes() {
     return { ...t };
   });
 
-  // หากประเภทบัตรที่เลือกไว้ปัจจุบันถูกปิดขาย ให้เลือกบัตรประเภทแรกที่ยังเปิดขายอัตโนมัติ
-  if (state.selectedTypeId && !activeTypes.some(t => t.id === state.selectedTypeId)) {
+  // ตรวจสอบโควต้า Early Bird สำหรับรอบที่เลือก
+  const ebRemaining = (state.selectedDateId && state.selectedSlot)
+    ? getEarlybirdRemainingSeats(state.selectedDateId, state.selectedSlot)
+    : EARLYBIRD_SLOT_QUOTA;
+  const isEbSoldOut = (state.selectedDateId && state.selectedSlot) && (ebRemaining <= 0);
+
+  // หากประเภทบัตรที่เลือกไว้ปัจจุบันถูกปิดขาย หรือ Early Bird หมด ให้เลือกบัตรประเภทอื่นอัตโนมัติ
+  if (state.selectedTypeId === 'earlybird' && isEbSoldOut) {
+    const alt = activeTypes.find(t => t.id !== 'earlybird');
+    state.selectedTypeId = alt ? alt.id : null;
+  } else if (state.selectedTypeId && !activeTypes.some(t => t.id === state.selectedTypeId)) {
     state.selectedTypeId = activeTypes.length > 0 ? activeTypes[0].id : null;
   }
 
@@ -436,26 +494,59 @@ function renderTicketTypes() {
     return;
   }
 
-  container.innerHTML = activeTypes.map(t => `
-    <div class="ticket-type-card ${state.selectedTypeId === t.id ? 'selected' : ''}"
-         id="tc-${t.id}"
-         onclick="selectType('${t.id}')">
-      <div class="ticket-type-info">
-        <div class="ticket-type-name">${t.name}</div>
-        ${t.desc ? `<div class="ticket-type-desc">${t.desc}</div>` : ''}
-        ${t.badgeText ? `<span class="ticket-type-badge badge-${t.badge}">${t.badgeText}</span>` : ''}
+  container.innerHTML = activeTypes.map(t => {
+    const isEb = (t.id === 'earlybird');
+    const isThisEbSoldOut = isEb && isEbSoldOut;
+
+    if (isThisEbSoldOut) {
+      return `
+        <div class="ticket-type-card disabled" style="opacity:0.45;cursor:not-allowed;border-style:dashed;background:rgba(255,255,255,0.02)">
+          <div class="ticket-type-info">
+            <div class="ticket-type-name" style="text-decoration:line-through;color:var(--muted)">${t.name}</div>
+            <div class="ticket-type-desc" style="color:var(--muted)">${t.desc}</div>
+            <span class="ticket-type-badge" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">❌ โควต้ารอบนี้เต็มแล้ว (ครบ 50 ใบ)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <div class="ticket-type-price" style="color:var(--muted)">${fmt(t.price)}<span> บาท</span></div>
+            <span style="font-size:0.75rem;color:#ef4444;font-weight:700">หมด</span>
+          </div>
+        </div>
+      `;
+    }
+
+    const quotaBadge = (isEb && state.selectedDateId && state.selectedSlot)
+      ? `<span style="display:inline-block;margin-top:6px;font-size:0.75rem;color:#f59e0b;background:rgba(245,158,11,0.12);padding:2px 8px;border-radius:4px;border:1px solid rgba(245,158,11,0.3)">⚡ โควต้ารอบนี้เหลือ ${ebRemaining}/50 ใบ</span>`
+      : '';
+
+    return `
+      <div class="ticket-type-card ${state.selectedTypeId === t.id ? 'selected' : ''}"
+           id="tc-${t.id}"
+           onclick="selectType('${t.id}')">
+        <div class="ticket-type-info">
+          <div class="ticket-type-name">${t.name}</div>
+          ${t.desc ? `<div class="ticket-type-desc">${t.desc}</div>` : ''}
+          ${t.badgeText ? `<span class="ticket-type-badge badge-${t.badge}">${t.badgeText}</span>` : ''}
+          ${quotaBadge}
+        </div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div class="ticket-type-price">${fmt(t.price)}<span> บาท</span></div>
+          <div class="ticket-radio"></div>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:16px">
-        <div class="ticket-type-price">${fmt(t.price)}<span> บาท</span></div>
-        <div class="ticket-radio"></div>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   if (state.selectedTypeId) showQuantitySection();
 }
 
 function selectType(typeId) {
+  if (typeId === 'earlybird' && state.selectedDateId && state.selectedSlot) {
+    const ebRemaining = getEarlybirdRemainingSeats(state.selectedDateId, state.selectedSlot);
+    if (ebRemaining <= 0) {
+      showToast('❌ โควต้าบัตร Early Bird สำหรับรอบนี้ครบ 50 ใบแล้ว กรุณาเลือกบัตรประเภทอื่น', 'error');
+      return;
+    }
+  }
   state.selectedTypeId = typeId;
   document.querySelectorAll('.ticket-type-card').forEach(el => el.classList.remove('selected'));
   document.getElementById(`tc-${typeId}`)?.classList.add('selected');
@@ -547,14 +638,25 @@ function goToEditQty() {
   // scrollIntoView จะถูกจัดการโดย goTo → renderSchedule → auto-scroll
 }
 
-function showQuantitySection() {
+function getMaxBuy() {
   const remaining = state.selectedDateId && state.selectedSlot
     ? getRemainingSeats(state.selectedDateId, state.selectedSlot)
     : CONFIG.maxQty;
-  const maxBuy = Math.min(CONFIG.maxQty, remaining);
+  let maxBuy = Math.min(CONFIG.maxQty, remaining);
+
+  if (state.selectedTypeId === 'earlybird' && state.selectedDateId && state.selectedSlot) {
+    const ebRemaining = getEarlybirdRemainingSeats(state.selectedDateId, state.selectedSlot);
+    maxBuy = Math.min(maxBuy, ebRemaining);
+  }
+  return Math.max(0, maxBuy);
+}
+
+function showQuantitySection() {
+  const maxBuy = getMaxBuy();
 
   // Clamp current qty
-  if (state.qty > maxBuy) state.qty = maxBuy;
+  if (state.qty > maxBuy) state.qty = Math.max(1, maxBuy);
+  if (state.qty <= 0 && maxBuy > 0) state.qty = 1;
 
   const qtyDisplay = document.getElementById('qty-display');
   if (qtyDisplay) qtyDisplay.textContent = state.qty;
@@ -564,7 +666,14 @@ function showQuantitySection() {
   if (qtyPlus) qtyPlus.disabled = state.qty >= maxBuy;
 
   const limitEl = document.getElementById('qty-limit-text');
-  if (limitEl) limitEl.textContent = `สูงสุด ${maxBuy} ใบต่อครั้ง`;
+  if (limitEl) {
+    if (state.selectedTypeId === 'earlybird' && state.selectedDateId && state.selectedSlot) {
+      const ebRem = getEarlybirdRemainingSeats(state.selectedDateId, state.selectedSlot);
+      limitEl.textContent = `Early Bird สูงสุด ${maxBuy} ใบต่อครั้ง (โควต้ารอบนี้เหลือ ${ebRem} ใบ)`;
+    } else {
+      limitEl.textContent = `สูงสุด ${maxBuy} ใบต่อครั้ง`;
+    }
+  }
 
   animateIn('quantity-section');
   animateIn('price-summary');
@@ -583,10 +692,8 @@ function animateIn(id) {
 
 // ─── QUANTITY ─────────────────────────────────────────────────────────────
 function changeQty(delta) {
-  const remaining = state.selectedDateId && state.selectedSlot
-    ? getRemainingSeats(state.selectedDateId, state.selectedSlot)
-    : CONFIG.maxQty;
-  const maxBuy = Math.min(CONFIG.maxQty, remaining);
+  const maxBuy = getMaxBuy();
+  if (maxBuy <= 0) return;
   state.qty = Math.max(1, Math.min(maxBuy, state.qty + delta));
 
   document.getElementById('qty-display').textContent = state.qty;
@@ -674,6 +781,14 @@ async function submitOrder(event) {
   const remaining = getRemainingSeats(state.selectedDateId, state.selectedSlot);
   if (remaining < state.qty) {
     return showToast(`❌ ที่นั่งไม่เพียงพอ เหลือเพียง ${remaining} ที่`, 'error');
+  }
+
+  // Check Early Bird quota (50 tickets / slot)
+  if (type.id === 'earlybird') {
+    const ebRemaining = getEarlybirdRemainingSeats(state.selectedDateId, state.selectedSlot);
+    if (ebRemaining < state.qty) {
+      return showToast(`❌ โควต้าบัตร Early Bird สำหรับรอบนี้เหลือเพียง ${ebRemaining} ใบ`, 'error');
+    }
   }
 
   const orderId    = generateOrderId();

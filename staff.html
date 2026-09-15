@@ -1060,7 +1060,7 @@ const JSONBIN_WRITE_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
 
 
 const STAFF_TICKET_DEFS = [
-  { id: 'earlybird', name: 'EARLYBIRD', desc: 'โปรโมชั่น Early Bird ราคาพิเศษ 500 บาท', defaultPrice: 500, badge: 'early',   badgeText: '🐦 EARLYBIRD' },
+  { id: 'earlybird', name: 'EARLYBIRD', desc: 'โปรโมชั่น Early Bird ราคาพิเศษ 500 บาท (จำกัด 50 ใบ/รอบ)', defaultPrice: 500, badge: 'early',   badgeText: '🐦 EARLYBIRD' },
   { id: 'student',   name: 'STUDENT',   desc: 'บัตรนักเรียน/นักศึกษา ราคาพิเศษ 550 บาท', defaultPrice: 550, badge: 'student', badgeText: '🎓 STUDENT' },
   { id: 'regular',   name: 'REGULAR',   desc: 'บัตรราคาปกติ 900 บาท',               defaultPrice: 900, badge: 'regular', badgeText: '🎭 REGULAR' },
 ];
@@ -1104,6 +1104,24 @@ function getStaffSoldCount(dateId, slot) {
   const targetLabel = makeShowDateLabel(SCHEDULE.find(d => d.id === dateId)?.dateLabel, slot);
   return Object.values(tickets).filter(t => {
     if (t.cancelled) return false;
+    if (t.showDateId && t.showSlot) {
+      return t.showDateId === dateId && t.showSlot === slot;
+    }
+    const resolved = findSlotByLabel(t.showDate);
+    if (resolved.dateId && resolved.slot) {
+      return resolved.dateId === dateId && resolved.slot === slot;
+    }
+    return t.showDate === targetLabel;
+  }).length;
+}
+
+function getStaffEarlybirdSoldCount(dateId, slot) {
+  const tickets = JSON.parse(localStorage.getItem('theater_tickets') || '{}');
+  const targetLabel = makeShowDateLabel(SCHEDULE.find(d => d.id === dateId)?.dateLabel, slot);
+  return Object.values(tickets).filter(t => {
+    if (t.cancelled) return false;
+    const isEB = t.typeId === 'earlybird' || (t.type && String(t.type).toUpperCase().includes('EARLY'));
+    if (!isEB) return false;
     if (t.showDateId && t.showSlot) {
       return t.showDateId === dateId && t.showSlot === slot;
     }
@@ -1342,6 +1360,7 @@ function renderTicketTypesManagement() {
           <div style="font-size:0.75rem;color:var(--muted);margin-top:6px">
             จำหน่ายแล้ว: <strong style="color:#ffffff">${soldCount}</strong> ใบ
           </div>
+          ${t.id === 'earlybird' ? `<div style="font-size:0.73rem;color:#f59e0b;margin-top:3px;font-weight:600">⚡ โควต้าจำกัดรอบละ 50 ใบ (รวม 4 รอบ = สูงสุด 200 ใบ)</div>` : ''}
         </div>
         <div class="tsi-right">
           <div class="tsi-price-wrap">
@@ -2491,8 +2510,19 @@ function renderStockTable() {
       const remClass = isFull ? 'stock-zero' : isLow ? 'stock-low' : 'stock-ok';
       const label = makeShowDateLabel(d.dateLabel, slot);
       const soldOut = isFull ? `<span class="stock-soldout-badge">SOLD OUT</span>` : '';
+      
+      const ebSold = getStaffEarlybirdSoldCount(d.id, slot);
+      const ebRem = Math.max(0, 50 - ebSold);
+      const ebNote = `<div style="font-size:0.73rem;color:#f59e0b;margin-top:4px;display:flex;align-items:center;gap:6px;">
+        <span>🐦 Early Bird: ขาย <strong>${ebSold}</strong>/50 ใบ</span>
+        <span style="color:${ebRem <= 0 ? '#ef4444' : '#10b981'};font-weight:600">(${ebRem <= 0 ? 'หมดโควต้า' : 'เหลือ ' + ebRem})</span>
+      </div>`;
+
       rows += `<tr class="${isFull ? 'stock-row-full' : ''}">
-        <td class="stock-label">${escHtml(label)}${soldOut}</td>
+        <td class="stock-label">
+          <div>${escHtml(label)}${soldOut}</div>
+          ${ebNote}
+        </td>
         <td class="stock-num stock-cap">${cap}</td>
         <td class="stock-num stock-sold">${sold}</td>
         <td class="stock-num ${remClass}">${rem}</td>

@@ -316,17 +316,26 @@ function doGet(e) {
       const tHeaders = tData[0] || [];
       const idxTStatus = tHeaders.indexOf('สถานะเช็คอิน') + 1;
       const idxTShowDate = tHeaders.indexOf('รอบการแสดง') + 1;
+      const idxTType = tHeaders.indexOf('ประเภทบัตร') + 1;
 
       const soldCounts = {};
+      const soldCountsByType = {};
       for (let i = 1; i < tData.length; i++) {
         const row = tData[i];
         const status = row[idxTStatus - 1];
         const showDate = row[idxTShowDate - 1];
+        const rawType = idxTType > 0 ? String(row[idxTType - 1] || '').toUpperCase() : '';
         if (showDate && status !== 'ยกเลิกแล้ว') {
           soldCounts[showDate] = (soldCounts[showDate] || 0) + 1;
+          const typeKey = rawType.includes('EARLY') ? 'earlybird' :
+                          rawType.includes('STUDENT') ? 'student' :
+                          rawType.includes('REGULAR') ? 'regular' : 'other';
+          const slotTypeKey = `${showDate}|${typeKey}`;
+          soldCountsByType[slotTypeKey] = (soldCountsByType[slotTypeKey] || 0) + 1;
         }
       }
       settings["soldCounts"] = soldCounts;
+      settings["soldCountsByType"] = soldCountsByType;
 
       return output(settings);
     }
