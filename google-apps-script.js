@@ -377,36 +377,38 @@ function doGet(e) {
 
       // ค้นหาตำแหน่งคอลัมน์ของชีทคำสั่งซื้อ (Orders)
       const oHeaders = oData[0] || [];
-      const idxOId = oHeaders.indexOf('เลขที่คำสั่งซื้อ') + 1;
-      const idxOTs = oHeaders.indexOf('วันเวลา') + 1;
-      const idxOName = oHeaders.indexOf('ชื่อ-นามสกุล') + 1;
-      const idxOPhone = oHeaders.indexOf('เบอร์โทร') + 1;
-      const idxOEmail = oHeaders.indexOf('อีเมล') + 1;
-      const idxOType = oHeaders.indexOf('ประเภทบัตร') + 1;
-      const idxOQty = oHeaders.indexOf('จำนวนใบ') + 1;
-      const idxOPrice = oHeaders.indexOf('ราคาต่อใบ') + 1;
-      const idxOTotal = oHeaders.indexOf('ราคารวม') + 1;
-      const idxONote = oHeaders.indexOf('หมายเหตุ') + 1;
-      const idxOTickets = oHeaders.indexOf('รหัสบัตรทั้งหมด') + 1;
-      const idxOSlip = oHeaders.indexOf('สลิปการโอนเงิน') + 1;
-      const idxOShowDate = oHeaders.indexOf('รอบการแสดง') + 1;
+      const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'เลขที่ออเดอร์', 'เลขออเดอร์', 'orderid', 'order id']) + 1;
+      const idxOTs = findColIndex(oHeaders, ['วันเวลา', 'เวลา', 'วันที่', 'timestamp', 'date']) + 1;
+      const idxOName = findColIndex(oHeaders, ['ชื่อ-นามสกุล', 'ชื่อนามสกุล', 'ชื่อ', 'name', 'fullname']) + 1;
+      const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'เบอร์โทรศัพท์', 'เบอร์', 'phone', 'tel']) + 1;
+      const idxOEmail = findColIndex(oHeaders, ['อีเมล', 'email']) + 1;
+      const idxOType = findColIndex(oHeaders, ['ประเภทบัตร', 'ประเภท', 'tickettype', 'type']) + 1;
+      const idxOQty = findColIndex(oHeaders, ['จำนวนใบ', 'จำนวน', 'qty', 'quantity']) + 1;
+      const idxOPrice = findColIndex(oHeaders, ['ราคาต่อใบ', 'ราคา', 'priceperticket', 'price']) + 1;
+      const idxOTotal = findColIndex(oHeaders, ['ราคารวม', 'ยอดรวม', 'total', 'amount']) + 1;
+      const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note']) + 1;
+      const idxOTickets = findColIndex(oHeaders, ['รหัสบัตรทั้งหมด', 'รหัสบัตร', 'ticketids', 'tickets']) + 1;
+      const idxOSlip = findColIndex(oHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'slipurl', 'slip url', 'slip_url', 'slip', 'sliplink']) + 1;
+      const idxOShowDate = findColIndex(oHeaders, ['รอบการแสดง', 'รอบ', 'showdate', 'round']) + 1;
 
       // ค้นหาตำแหน่งคอลัมน์ของชีทตั๋วรายใบ (Tickets)
       const tHeaders = tData[0] || [];
-      const idxTId = tHeaders.indexOf('รหัสบัตร') + 1;
-      const idxTOId = tHeaders.indexOf('เลขที่คำสั่งซื้อ') + 1;
-      const idxTName = tHeaders.indexOf('ชื่อ-นามสกุล') + 1;
-      const idxTPhone = tHeaders.indexOf('เบอร์โทร') + 1;
-      const idxTType = tHeaders.indexOf('ประเภทบัตร') + 1;
-      const idxTStatus = tHeaders.indexOf('สถานะเช็คอิน') + 1;
-      const idxTTime = tHeaders.indexOf('เวลาเช็คอิน') + 1;
-      const idxTShowDate = tHeaders.indexOf('รอบการแสดง') + 1;
+      const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']) + 1;
+      const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']) + 1;
+      const idxTName = findColIndex(tHeaders, ['ชื่อ-นามสกุล', 'ชื่อ', 'name']) + 1;
+      const idxTPhone = findColIndex(tHeaders, ['เบอร์โทร', 'phone', 'tel']) + 1;
+      const idxTType = findColIndex(tHeaders, ['ประเภทบัตร', 'type']) + 1;
+      const idxTStatus = findColIndex(tHeaders, ['สถานะเช็คอิน', 'สถานะ', 'status']) + 1;
+      const idxTTime = findColIndex(tHeaders, ['เวลาเช็คอิน', 'time']) + 1;
+      const idxTShowDate = findColIndex(tHeaders, ['รอบการแสดง', 'showdate']) + 1;
+      const idxTSlip = findColIndex(tHeaders, ['สลิปการโอนเงิน', 'สลิป', 'slipurl', 'slip url', 'slip']) + 1;
 
       // สร้าง Map แหล่งรวมคำสั่งซื้อ
       const ordersMap = {};
       for (let i = 1; i < oData.length; i++) {
         const row = oData[i];
         if (!row[idxOId - 1]) continue;
+        const slipVal = (idxOSlip ? row[idxOSlip - 1] : '') || '';
         const order = {
           orderId: row[idxOId - 1],
           timestamp: row[idxOTs - 1],
@@ -419,7 +421,8 @@ function doGet(e) {
           total: Number(row[idxOTotal - 1] || 0),
           note: idxONote ? row[idxONote - 1] : '',
           ticketIds: idxOTickets ? (row[idxOTickets - 1] || '').split(', ') : [],
-          slipImage: idxOSlip ? row[idxOSlip - 1] : '',
+          slipUrl: slipVal,
+          slipImage: slipVal,
           showDate: idxOShowDate ? row[idxOShowDate - 1] : '',
           cancelled: false
         };
@@ -443,6 +446,8 @@ function doGet(e) {
         const match = tId.match(/-T(\d+)$/);
         if (match) ticketNum = Number(match[1]);
 
+        const tSlip = (idxTSlip ? row[idxTSlip - 1] : '') || parentOrder.slipUrl || parentOrder.slipImage || '';
+
         tickets[tId] = {
           ticketId: tId,
           ticketNum: ticketNum,
@@ -459,7 +464,9 @@ function doGet(e) {
           checkedIn: isCheckedIn,
           checkInTime: row[idxTTime - 1] || null,
           cancelled: isCancelled,
-          cancelledAt: isCancelled ? (row[idxTTime - 1] || new Date().toISOString()) : null
+          cancelledAt: isCancelled ? (row[idxTTime - 1] || new Date().toISOString()) : null,
+          slipUrl: tSlip,
+          slipImage: tSlip
         };
       }
 
@@ -511,36 +518,38 @@ function doGet(e) {
       const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
       const tData = ticketsSheet.getDataRange().getValues();
       const tHeaders = tData[0] || [];
-      const idxTId = tHeaders.indexOf('รหัสบัตร') + 1;
-      const idxTOId = tHeaders.indexOf('เลขที่คำสั่งซื้อ') + 1;
-      const idxTName = tHeaders.indexOf('ชื่อ-นามสกุล') + 1;
-      const idxTPhone = tHeaders.indexOf('เบอร์โทร') + 1;
-      const idxTType = tHeaders.indexOf('ประเภทบัตร') + 1;
-      const idxTStatus = tHeaders.indexOf('สถานะเช็คอิน') + 1;
-      const idxTTime = tHeaders.indexOf('เวลาเช็คอิน') + 1;
-      const idxTShowDate = tHeaders.indexOf('รอบการแสดง') + 1;
+      const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']) + 1;
+      const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']) + 1;
+      const idxTName = findColIndex(tHeaders, ['ชื่อ-นามสกุล', 'ชื่อ', 'name']) + 1;
+      const idxTPhone = findColIndex(tHeaders, ['เบอร์โทร', 'phone', 'tel']) + 1;
+      const idxTType = findColIndex(tHeaders, ['ประเภทบัตร', 'type']) + 1;
+      const idxTStatus = findColIndex(tHeaders, ['สถานะเช็คอิน', 'สถานะ', 'status']) + 1;
+      const idxTTime = findColIndex(tHeaders, ['เวลาเช็คอิน', 'time']) + 1;
+      const idxTShowDate = findColIndex(tHeaders, ['รอบการแสดง', 'showdate']) + 1;
+      const idxTSlip = findColIndex(tHeaders, ['สลิปการโอนเงิน', 'สลิป', 'slipurl', 'slip url', 'slip']) + 1;
 
       const tickets = {};
       const orders = [];
 
       const oHeadersFull = oHeaders;
-      const idxOTs = oHeadersFull.indexOf('วันเวลา') + 1;
-      const idxOName = oHeadersFull.indexOf('ชื่อ-นามสกุล') + 1;
-      const idxOEmail = oHeadersFull.indexOf('อีเมล') + 1;
-      const idxOType = oHeadersFull.indexOf('ประเภทบัตร') + 1;
-      const idxOQty = oHeadersFull.indexOf('จำนวนใบ') + 1;
-      const idxOPrice = oHeadersFull.indexOf('ราคาต่อใบ') + 1;
-      const idxOTotal = oHeadersFull.indexOf('ราคารวม') + 1;
-      const idxONote = oHeadersFull.indexOf('หมายเหตุ') + 1;
-      const idxOTickets = oHeadersFull.indexOf('รหัสบัตรทั้งหมด') + 1;
-      const idxOSlip = oHeadersFull.indexOf('สลิปการโอนเงิน') + 1;
-      const idxOShowDate = oHeadersFull.indexOf('รอบการแสดง') + 1;
+      const idxOTs = findColIndex(oHeadersFull, ['วันเวลา', 'เวลา', 'วันที่', 'timestamp', 'date']) + 1;
+      const idxOName = findColIndex(oHeadersFull, ['ชื่อ-นามสกุล', 'ชื่อนามสกุล', 'ชื่อ', 'name', 'fullname']) + 1;
+      const idxOEmail = findColIndex(oHeadersFull, ['อีเมล', 'email']) + 1;
+      const idxOType = findColIndex(oHeadersFull, ['ประเภทบัตร', 'ประเภท', 'tickettype', 'type']) + 1;
+      const idxOQty = findColIndex(oHeadersFull, ['จำนวนใบ', 'จำนวน', 'qty']) + 1;
+      const idxOPrice = findColIndex(oHeadersFull, ['ราคาต่อใบ', 'ราคา', 'priceperticket', 'price']) + 1;
+      const idxOTotal = findColIndex(oHeadersFull, ['ราคารวม', 'ยอดรวม', 'total', 'amount']) + 1;
+      const idxONote = findColIndex(oHeadersFull, ['หมายเหตุ', 'note']) + 1;
+      const idxOTickets = findColIndex(oHeadersFull, ['รหัสบัตรทั้งหมด', 'รหัสบัตร', 'ticketids', 'tickets']) + 1;
+      const idxOSlip = findColIndex(oHeadersFull, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'slipurl', 'slip url', 'slip_url', 'slip', 'sliplink']) + 1;
+      const idxOShowDate = findColIndex(oHeadersFull, ['รอบการแสดง', 'รอบ', 'showdate', 'round']) + 1;
 
       const ordersMap = {};
       for (let i = 1; i < oData.length; i++) {
         const row = oData[i];
         const oId = row[idxOId - 1];
         if (matchedOrderIds.indexOf(oId) >= 0) {
+          const slipVal = (idxOSlip ? row[idxOSlip - 1] : '') || '';
           const order = {
             orderId: oId,
             timestamp: row[idxOTs - 1],
@@ -553,7 +562,8 @@ function doGet(e) {
             total: Number(row[idxOTotal - 1] || 0),
             note: idxONote ? row[idxONote - 1] : '',
             ticketIds: idxOTickets ? (row[idxOTickets - 1] || '').split(', ') : [],
-            slipImage: idxOSlip ? row[idxOSlip - 1] : '',
+            slipUrl: slipVal,
+            slipImage: slipVal,
             showDate: idxOShowDate ? row[idxOShowDate - 1] : '',
             cancelled: false
           };
@@ -579,6 +589,8 @@ function doGet(e) {
           const match = tId.match(/-T(\d+)$/);
           if (match) ticketNum = Number(match[1]);
 
+          const tSlip = (idxTSlip ? row[idxTSlip - 1] : '') || parentOrder.slipUrl || parentOrder.slipImage || '';
+
           tickets[tId] = {
             ticketId: tId,
             ticketNum: ticketNum,
@@ -595,7 +607,9 @@ function doGet(e) {
             checkedIn: isCheckedIn,
             checkInTime: row[idxTTime - 1] || null,
             cancelled: isCancelled,
-            cancelledAt: isCancelled ? (row[idxTTime - 1] || new Date().toISOString()) : null
+            cancelledAt: isCancelled ? (row[idxTTime - 1] || new Date().toISOString()) : null,
+            slipUrl: tSlip,
+            slipImage: tSlip
           };
         }
       }
@@ -638,7 +652,8 @@ function handleNewOrder(data) {
       }
       const file = folder.createFile(blob);
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      slipUrl = file.getUrl();
+      const fileId = file.getId();
+      slipUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
     } catch (e) {
       slipUrl = 'บันทึกรูปไม่สำเร็จ: ' + e.message;
     }
@@ -669,19 +684,31 @@ function handleNewOrder(data) {
   
   const oHeaders = ordersSheet.getDataRange().getValues()[0] || [];
   const rowData = [];
-  rowData[oHeaders.indexOf('เลขที่คำสั่งซื้อ')] = data.orderId;
-  rowData[oHeaders.indexOf('วันเวลา')] = data.timestamp;
-  rowData[oHeaders.indexOf('ชื่อ-นามสกุล')] = data.name;
-  rowData[oHeaders.indexOf('เบอร์โทร')] = cleanPhoneVal;
-  rowData[oHeaders.indexOf('อีเมล')] = data.email || '—';
-  rowData[oHeaders.indexOf('ประเภทบัตร')] = data.ticketType;
-  rowData[oHeaders.indexOf('จำนวนใบ')] = data.qty;
-  rowData[oHeaders.indexOf('ราคาต่อใบ')] = data.pricePerTicket;
-  rowData[oHeaders.indexOf('ราคารวม')] = data.total;
-  rowData[oHeaders.indexOf('รอบการแสดง')] = data.showDate || '—';
-  rowData[oHeaders.indexOf('หมายเหตุ')] = data.note || '—';
-  rowData[oHeaders.indexOf('รหัสบัตรทั้งหมด')] = data.tickets;
-  rowData[oHeaders.indexOf('สลิปการโอนเงิน')] = slipUrl;
+  
+  function assignOrderCol(names, val) {
+    const idx = findColIndex(oHeaders, names);
+    if (idx >= 0) rowData[idx] = val;
+  }
+
+  assignOrderCol(['เลขที่คำสั่งซื้อ', 'orderid', 'order id'], data.orderId);
+  assignOrderCol(['วันเวลา', 'timestamp', 'date'], data.timestamp);
+  assignOrderCol(['ชื่อ-นามสกุล', 'name', 'fullname'], data.name);
+  assignOrderCol(['เบอร์โทร', 'phone', 'tel'], cleanPhoneVal);
+  assignOrderCol(['อีเมล', 'email'], data.email || '—');
+  assignOrderCol(['ประเภทบัตร', 'tickettype', 'type'], data.ticketType);
+  assignOrderCol(['จำนวนใบ', 'qty'], data.qty);
+  assignOrderCol(['ราคาต่อใบ', 'price'], data.pricePerTicket);
+  assignOrderCol(['ราคารวม', 'total'], data.total);
+  assignOrderCol(['รอบการแสดง', 'showdate'], data.showDate || '—');
+  assignOrderCol(['หมายเหตุ', 'note'], data.note || '—');
+  assignOrderCol(['รหัสบัตรทั้งหมด', 'tickets'], data.tickets);
+  
+  const slipIdx = findColIndex(oHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'slipurl', 'slip url', 'slip_url', 'slip']);
+  if (slipIdx >= 0) {
+    rowData[slipIdx] = slipUrl;
+  } else {
+    rowData.push(slipUrl);
+  }
 
   for (let i = 0; i < oHeaders.length; i++) {
     if (rowData[i] === undefined) rowData[i] = '';
@@ -698,21 +725,30 @@ function handleNewOrder(data) {
     'รอบการแสดง',
     'สถานะเช็คอิน',
     'เวลาเช็คอิน',
+    'สลิปการโอนเงิน'
   ]);
   
   const tHeaders = ticketsSheet.getDataRange().getValues()[0] || [];
   const ticketIds = data.tickets.split(', ');
+  const tSlipIdx = findColIndex(tHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'slipurl', 'slip url', 'slip']);
   
   ticketIds.forEach(tid => {
     const tRowData = [];
-    tRowData[tHeaders.indexOf('รหัสบัตร')] = tid;
-    tRowData[tHeaders.indexOf('เลขที่คำสั่งซื้อ')] = data.orderId;
-    tRowData[tHeaders.indexOf('ชื่อ-นามสกุล')] = data.name;
-    tRowData[tHeaders.indexOf('เบอร์โทร')] = cleanPhoneVal;
-    tRowData[tHeaders.indexOf('ประเภทบัตร')] = data.ticketType;
-    tRowData[tHeaders.indexOf('รอบการแสดง')] = data.showDate || '—';
-    tRowData[tHeaders.indexOf('สถานะเช็คอิน')] = 'ยังไม่เช็คอิน';
-    tRowData[tHeaders.indexOf('เวลาเช็คอิน')] = '';
+    const assignTCol = (names, val) => {
+      const idx = findColIndex(tHeaders, names);
+      if (idx >= 0) tRowData[idx] = val;
+    };
+    assignTCol(['รหัสบัตร', 'ticketid'], tid);
+    assignTCol(['เลขที่คำสั่งซื้อ', 'orderid'], data.orderId);
+    assignTCol(['ชื่อ-นามสกุล', 'name'], data.name);
+    assignTCol(['เบอร์โทร', 'phone'], cleanPhoneVal);
+    assignTCol(['ประเภทบัตร', 'type'], data.ticketType);
+    assignTCol(['รอบการแสดง', 'showdate'], data.showDate || '—');
+    assignTCol(['สถานะเช็คอิน', 'status'], 'ยังไม่เช็คอิน');
+    assignTCol(['เวลาเช็คอิน', 'checkintime'], '');
+    if (tSlipIdx >= 0) {
+      tRowData[tSlipIdx] = slipUrl;
+    }
 
     for (let i = 0; i < tHeaders.length; i++) {
       if (tRowData[i] === undefined) tRowData[i] = '';
@@ -761,6 +797,19 @@ function getOrCreateSettings(ss) {
   return sheet;
 }
 
+// ค้นหาดัชนีคอลัมน์แบบยืดหยุ่น (รองรับหลายชื่อ ทั้งไทย/อังกฤษ และ case-insensitive)
+function findColIndex(headers, possibleNames) {
+  if (!headers || !headers.length) return -1;
+  for (let i = 0; i < headers.length; i++) {
+    const h = String(headers[i] || '').trim().toLowerCase().replace(/[\s_\-\.\(\)]/g, '');
+    for (let j = 0; j < possibleNames.length; j++) {
+      const target = String(possibleNames[j] || '').trim().toLowerCase().replace(/[\s_\-\.\(\)]/g, '');
+      if (h === target) return i;
+    }
+  }
+  return -1;
+}
+
 function getColumnIndex(sheet, headerName) {
   const lastCol = sheet.getLastColumn();
   if (lastCol > 0) {
@@ -771,7 +820,7 @@ function getColumnIndex(sheet, headerName) {
   // ถ้าไม่พบคอลัมน์นี้ ให้ทำการเพิ่มคอลัมน์ใหม่ที่ท้ายหัวตารางแบบอัตโนมัติ
   const newCol = lastCol + 1;
   sheet.getRange(1, newCol).setValue(headerName);
-  sheet.getRange(1, newCol).setBackground('#4a2080').setFontColor('#ffffff').setFontWeight('bold');
+  sheet.getRange(1, newCol).setBackground('#1c1c1e').setFontColor('#ffffff').setFontWeight('bold');
   return newCol;
 }
 
