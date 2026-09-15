@@ -1,3 +1,10 @@
+// 🔑 ฟังก์ชันสำหรับกดปุ่ม "เรียกใช้ (Run)" 1 ครั้งเพื่อกดยืนยันสิทธิ์ Google Drive ให้ระบบ
+function authorizeDrive() {
+  DriveApp.getRootFolder();
+  SpreadsheetApp.getActiveSpreadsheet();
+  Logger.log("✅ ยืนยันสิทธิ์ Google Drive และ Google Sheets สำเร็จแล้ว!");
+}
+
 function getSS() {
   if (typeof SPREADSHEET_ID !== 'undefined' && SPREADSHEET_ID && SPREADSHEET_ID !== 'YOUR_SPREADSHEET_ID_HERE') {
     try {
