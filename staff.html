@@ -391,10 +391,6 @@
     .detail-ticket-num  { font-family: monospace; font-size: 0.8rem; color: #888888; }
     .detail-ticket-id   { font-family: monospace; font-size: 0.78rem; color: #ffffff; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* Slip image */
-    .detail-slip-img { max-width: 100%; border-radius: 12px; border: 1px solid #333333; display: block; cursor: zoom-in; }
-    .slip-thumb-wrap { padding: 12px 20px 20px; }
-
     /* Edit form */
     .edit-form { padding: 20px; display: flex; flex-direction: column; gap: 14px; background: #141414; }
     .edit-form-group label { display: block; font-size: 0.82rem; color: #cccccc; margin-bottom: 6px; font-weight: 600; }
@@ -810,10 +806,6 @@
         <div id="dv-tickets-list"></div>
       </div>
 
-      <div class="detail-section" id="dv-slip-section">
-        <div class="detail-section-title">🧾 สลิปการโอนเงิน (SlipUrl)</div>
-        <div id="dv-slip-body"></div>
-      </div>
     </div>
 
     <!-- EDIT MODE -->
@@ -858,15 +850,6 @@
       </div>
     </div>
   </div>
-</div>
-
-<!-- ══ SLIP FULLSCREEN ══════════════════════════════════════════════════════ -->
-<div id="slip-full-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.95);align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:20px;" onclick="if(event.target===this)closeSlipFull()">
-  <div style="position:absolute;top:16px;right:20px;display:flex;gap:10px;z-index:100000;">
-    <a id="slip-full-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;background:#22c55e;color:#000;padding:8px 16px;border-radius:50px;text-decoration:none;font-weight:700;font-size:0.85rem;">🔗 เปิดสลิปต้นฉบับ</a>
-    <button onclick="closeSlipFull()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:1.2rem;">✕</button>
-  </div>
-  <img id="slip-full-img" style="max-width:90vw;max-height:85vh;border-radius:12px;object-fit:contain;box-shadow:0 10px 40px rgba(0,0,0,0.9);" src="" alt="slip" />
 </div>
 
 <!-- ══ HEADER ════════════════════════════════════════════════════════════════ -->
@@ -1613,8 +1596,6 @@ function renderRows(rows, list, countEl) {
     const checkedCount = activeT.filter(x => x.checkedIn).length;
     const isAllChecked = !isAllCancelled && checkedCount === activeT.length && activeT.length > 0;
     const initial      = (t.name||'?').charAt(0);
-    const ordObj       = allOrdersMap[t.orderId] || {};
-    const hasSlip      = !!(t.slipUrl || t.slipImage || ordObj.slipUrl || ordObj.slipImage);
     let checkTimeStr   = '';
     if (isAllChecked && t.checkInTime) {
       checkTimeStr = new Date(t.checkInTime).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'});
@@ -1632,7 +1613,7 @@ function renderRows(rows, list, countEl) {
         <div class="customer-avatar ${isAllChecked?'avatar-checked':'avatar-pending'}" style="${isAllCancelled?'opacity:0.4':''}">${escHtml(initial)}</div>
         <div class="customer-info">
           <div class="customer-name" style="${isAllCancelled?'text-decoration:line-through;opacity:0.6':''}">${escHtml(t.name||'—')}</div>
-          <div class="customer-meta">📞 ${escHtml(t.phone||'—')} · ${escHtml(t.type||'—')} · ${allT.length} ใบ${hasSlip ? ' · <span style="color:#86efac;font-weight:600">🧾 สลิป</span>' : ''}${isAllCancelled?' · ยกเลิก':''}</div>
+          <div class="customer-meta">📞 ${escHtml(t.phone||'—')} · ${escHtml(t.type||'—')} · ${allT.length} ใบ${isAllCancelled?' · ยกเลิก':''}</div>
           <div class="customer-tid">${escHtml(t.orderId||'—')}</div>
         </div>
         <div class="customer-status">
@@ -1645,23 +1626,8 @@ function renderRows(rows, list, countEl) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// DETAIL MODAL & SLIP
+// DETAIL MODAL
 // ═══════════════════════════════════════════════════════════════
-function getDirectSlipImageUrl(url) {
-  if (!url || typeof url !== 'string') return '';
-  url = url.trim();
-  if (url === '—' || url === '-' || url.startsWith('บันทึกรูปไม่สำเร็จ')) return '';
-  if (url.startsWith('data:image')) return url; // Base64 data URI
-
-  // Google Drive URL matcher
-  const driveIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (driveIdMatch && driveIdMatch[1]) {
-    const fileId = driveIdMatch[1];
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`;
-  }
-  return url;
-}
-
 function openDetailModal(ticketId) {
   currentDetailTicketId = ticketId;
   editMode = false;
@@ -1730,49 +1696,6 @@ function openDetailModal(ticketId) {
         <div class="ticket-status-actions">${actionsHtml}</div>
       </div>`;
   }).join('');
-
-  // Slip image / URL
-  const slipRaw = (rep.slipUrl || rep.slipImage || order?.slipUrl || order?.slipImage || '').trim();
-  const slipDirectImg = getDirectSlipImageUrl(slipRaw);
-  const slipSection = document.getElementById('dv-slip-section');
-  const slipBody = document.getElementById('dv-slip-body');
-  
-  if (slipSection && slipBody) {
-    slipSection.style.display = 'block';
-    if (slipRaw && slipRaw !== '—' && !slipRaw.startsWith('บันทึกรูปไม่สำเร็จ')) {
-      const isHttp = slipRaw.startsWith('http://') || slipRaw.startsWith('https://');
-      const imgSrc = slipDirectImg || slipRaw;
-      slipBody.innerHTML = `
-        <div class="slip-thumb-wrap" style="padding:0;text-align:center;">
-          <img id="dv-slip-img" class="detail-slip-img" 
-               src="${escHtml(imgSrc)}" 
-               alt="สลิปการโอนเงิน" 
-               onclick="openSlipFull('${escHtml(imgSrc)}', '${escHtml(slipRaw)}')"
-               onerror="this.style.display='none';const tip=document.getElementById('dv-slip-err-tip');if(tip)tip.style.display='block';" />
-        </div>
-        <div id="dv-slip-err-tip" style="display:none;padding:12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:10px;margin-top:10px;font-size:0.84rem;color:#fde68a;">
-          ⚠️ รูปพรีวิวติดข้อจำกัดสิทธิ์ของเบราว์เซอร์ กรุณากดปุ่มด้านล่างเพื่อเปิดดูสลิปต้นฉบับ
-        </div>
-        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-          ${isHttp ? `
-            <a href="${escHtml(slipRaw)}" target="_blank" rel="noopener noreferrer" class="btn btn-check" style="background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.4);color:#86efac;text-decoration:none;font-size:0.84rem;padding:8px 16px;display:inline-flex;align-items:center;gap:6px;">
-              🔗 เปิดดูสลิปต้นฉบับ (Google Drive)
-            </a>
-          ` : `
-            <button class="btn btn-check" onclick="openSlipFull('${escHtml(imgSrc)}', '${escHtml(slipRaw)}')" style="font-size:0.84rem;padding:8px 16px;">
-              🔍 ดูรูปสลิปขนาดเต็ม
-            </button>
-          `}
-        </div>`;
-    } else {
-      const errorMsg = slipRaw.startsWith('บันทึกรูปไม่สำเร็จ') ? ` (${escHtml(slipRaw)})` : '';
-      slipBody.innerHTML = `
-        <div style="padding:14px;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.15);border-radius:12px;color:var(--muted);font-size:0.85rem;display:flex;align-items:center;gap:8px;">
-          <span>⚠️</span>
-          <span>ไม่พบไฟล์สลิป หรือเป็นตั๋วพิเศษ/ตั๋วโควต้าทีมงาน${errorMsg}</span>
-        </div>`;
-    }
-  }
 
   // --- Fill EDIT mode form ---
   document.getElementById('edit-name').value  = rep.name  || '';
@@ -1942,27 +1865,6 @@ function saveCustomerEdit() {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// SLIP FULLSCREEN
-// ═══════════════════════════════════════════════════════════════
-function openSlipFull(src, origUrl) {
-  const ov = document.getElementById('slip-full-overlay');
-  document.getElementById('slip-full-img').src = src;
-  const link = document.getElementById('slip-full-link');
-  const targetUrl = origUrl || src;
-  if (link) {
-    if (targetUrl && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
-      link.href = targetUrl;
-      link.style.display = 'inline-block';
-    } else {
-      link.style.display = 'none';
-    }
-  }
-  ov.style.display = 'flex';
-}
-function closeSlipFull() {
-  document.getElementById('slip-full-overlay').style.display = 'none';
-}
 
 // ═══════════════════════════════════════════════════════════════
 // SCANNER
@@ -2132,28 +2034,17 @@ async function syncAllFromSheets(silent = false) {
     if (res.ok) {
       const data = await res.json();
       if (data.success) {
-        // Map slipUrl และ slipImage จาก orders มาให้ตั๋วในกรณีที่ตั๋วไม่มี slip โดยตรง
-        const orderSlipMap = {};
-        (data.orders || []).forEach(o => {
-          if (o.orderId) {
-            orderSlipMap[o.orderId] = o.slipUrl || o.slipImage || '';
-          }
-        });
-
         // ทำความสะอาดและแปลโจทย์รอบวันแสดงให้ตั๋วแต่ละใบเพื่อให้ระบบจัดเก็บคีย์ตรงกัน
         const normalizedTickets = {};
         if (data.tickets) {
           Object.keys(data.tickets).forEach(tId => {
             const t = data.tickets[tId];
             const resolved = findSlotByLabel(t.showDate);
-            const orderSlip = t.orderId ? (orderSlipMap[t.orderId] || '') : '';
             normalizedTickets[tId] = {
               ...t,
               phone: cleanThaiPhone(t.phone),
               showDateId: resolved.dateId || t.showDateId || '',
               showSlot: resolved.slot || t.showSlot || '',
-              slipUrl: t.slipUrl || orderSlip || '',
-              slipImage: t.slipImage || t.slipUrl || orderSlip || '',
             };
           });
         }

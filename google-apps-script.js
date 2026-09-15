@@ -641,17 +641,22 @@ function handleNewOrder(data) {
     try {
       const base64Data = data.slipImage.split(',')[1];
       const mimeType = data.slipImage.split(';')[0].split(':')[1];
-      const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, `slip-${data.orderId}.jpg`);
+      const cleanName = (data.name || '').trim().replace(/[/\\?%*:|"<>]/g, '_');
+      const ext = mimeType.indexOf('png') >= 0 ? 'png' : 'jpg';
+      const fileName = `slip-${data.orderId}${cleanName ? '-' + cleanName : ''}.${ext}`;
+      const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
       
       let folder;
-      const folders = DriveApp.getFoldersByName('Theater Slips - แฟ้มคดีกิเลนแดง');
+      const folderName = 'Theater Slips - แฟ้มคดีกิเลนแดง';
+      const folders = DriveApp.getFoldersByName(folderName);
       if (folders.hasNext()) {
         folder = folders.next();
       } else {
-        folder = DriveApp.createFolder('Theater Slips - แฟ้มคดีกิเลนแดง');
+        folder = DriveApp.createFolder(folderName);
       }
       const file = folder.createFile(blob);
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      file.setDescription(`เลขที่คำสั่งซื้อ: ${data.orderId}\nผู้จอง: ${data.name || '—'}\nเบอร์โทร: ${data.phone || '—'}\nรอบการแสดง: ${data.showDate || '—'}\nเวลาทำรายการ: ${data.timestamp || ''}`);
       const fileId = file.getId();
       slipUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
     } catch (e) {
@@ -703,12 +708,15 @@ function handleNewOrder(data) {
   assignOrderCol(['หมายเหตุ', 'note'], data.note || '—');
   assignOrderCol(['รหัสบัตรทั้งหมด', 'tickets'], data.tickets);
   
-  const slipIdx = findColIndex(oHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'slipurl', 'slip url', 'slip_url', 'slip']);
-  if (slipIdx >= 0) {
-    rowData[slipIdx] = slipUrl;
-  } else {
-    rowData.push(slipUrl);
+  let slipIdx = findColIndex(oHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'หลักฐานการโอนเงิน', 'ลิงก์สลิป', 'ลิงค์สลิป', 'slipurl', 'slip url', 'slip_url', 'slip', 'sliplink']);
+  if (slipIdx < 0) {
+    const newCol = ordersSheet.getLastColumn() + 1;
+    ordersSheet.getRange(1, newCol).setValue('สลิปการโอนเงิน');
+    ordersSheet.getRange(1, newCol).setBackground('#4a2080').setFontColor('#ffffff').setFontWeight('bold');
+    oHeaders.push('สลิปการโอนเงิน');
+    slipIdx = newCol - 1;
   }
+  rowData[slipIdx] = slipUrl;
 
   for (let i = 0; i < oHeaders.length; i++) {
     if (rowData[i] === undefined) rowData[i] = '';
@@ -730,7 +738,14 @@ function handleNewOrder(data) {
   
   const tHeaders = ticketsSheet.getDataRange().getValues()[0] || [];
   const ticketIds = data.tickets.split(', ');
-  const tSlipIdx = findColIndex(tHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'slipurl', 'slip url', 'slip']);
+  let tSlipIdx = findColIndex(tHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'slipurl', 'slip url', 'slip']);
+  if (tSlipIdx < 0) {
+    const newCol = ticketsSheet.getLastColumn() + 1;
+    ticketsSheet.getRange(1, newCol).setValue('สลิปการโอนเงิน');
+    ticketsSheet.getRange(1, newCol).setBackground('#4a2080').setFontColor('#ffffff').setFontWeight('bold');
+    tHeaders.push('สลิปการโอนเงิน');
+    tSlipIdx = newCol - 1;
+  }
   
   ticketIds.forEach(tid => {
     const tRowData = [];
@@ -746,9 +761,7 @@ function handleNewOrder(data) {
     assignTCol(['รอบการแสดง', 'showdate'], data.showDate || '—');
     assignTCol(['สถานะเช็คอิน', 'status'], 'ยังไม่เช็คอิน');
     assignTCol(['เวลาเช็คอิน', 'checkintime'], '');
-    if (tSlipIdx >= 0) {
-      tRowData[tSlipIdx] = slipUrl;
-    }
+    tRowData[tSlipIdx] = slipUrl;
 
     for (let i = 0; i < tHeaders.length; i++) {
       if (tRowData[i] === undefined) tRowData[i] = '';
