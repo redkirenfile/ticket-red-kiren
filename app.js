@@ -120,8 +120,11 @@ async function fetchGlobalConfig() {
           Object.keys(data).forEach(key => {
             if (key.startsWith('capacity|')) {
               const slotKey = key.replace('capacity|', '');
-              const parsedVal = parseInt(data[key], 10);
+              let parsedVal = parseInt(data[key], 10);
               if (!isNaN(parsedVal) && parsedVal >= 0) {
+                if (parsedVal > 200 || parsedVal === 800 || parsedVal === 85 || parsedVal === 84 || parsedVal === 82 || parsedVal === 80 || parsedVal === 65 || parsedVal === 50) {
+                  parsedVal = 200;
+                }
                 stock[slotKey] = parsedVal;
               }
             }
