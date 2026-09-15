@@ -382,8 +382,8 @@ async function doSearch() {
   if (currentTab === 'phone') {
     const rawVal = document.getElementById('input-phone').value.trim();
     query = cleanThaiPhone(rawVal);
-    if (!query || !/^0\d{9}$/.test(query)) {
-      errEl.textContent = '❌ กรุณากรอกเบอร์โทรศัพท์มือถือที่ถูกต้อง (เช่น 0812345678)';
+    if (!query || !/^0\d{8,9}$/.test(query)) {
+      errEl.textContent = '❌ กรุณากรอกเบอร์โทรศัพท์ที่ถูกต้อง (เช่น 0812345678)';
       errEl.classList.add('show'); return;
     }
   } else {
@@ -410,31 +410,43 @@ async function doSearch() {
   let allTickets = JSON.parse(localStorage.getItem('theater_tickets') || '{}');
   let allOrders  = JSON.parse(localStorage.getItem('theater_orders')  || '[]');
 
-  // ฟังก์ชันล้างฟอร์แมตเบอร์โทรศัพท์ (ตัด 66 แทนที่ด้วย 0, เติม 0 ให้ครบ 10 หลักอัตโนมัติ)
+  // ฟังก์ชันล้างฟอร์แมตเบอร์โทรศัพท์ (ตัด 66 แทนที่ด้วย 0, เติม 0 ให้ครบหลักอัตโนมัติ)
   function cleanThaiPhone(p) {
     let s = String(p || '').trim().replace(/\D/g, '');
     if (s.startsWith('66')) {
       s = '0' + s.substring(2);
     }
-    if (s.length === 9 && !s.startsWith('0')) {
+    if ((s.length === 8 || s.length === 9) && !s.startsWith('0')) {
       s = '0' + s;
     }
     return s;
   }
 
-  // ฟังก์ชันสแกนหาใน localStorage ท้องถิ่น
+  // ฟังก์ชันสแกนหาใน localStorage ท้องถิ่น (ค้นหาทั้ง Orders และ Tickets)
   function findLocalMatchedIds() {
     const ids = new Set();
     if (currentTab === 'phone') {
       const qClean = cleanThaiPhone(query);
+      allOrders.forEach(o => {
+        const pClean = cleanThaiPhone(o.phone);
+        if (pClean && (pClean === qClean || (qClean.length >= 9 && pClean.endsWith(qClean.slice(-9))))) {
+          ids.add(o.orderId);
+        }
+      });
       Object.values(allTickets).forEach(t => {
-        if (cleanThaiPhone(t.phone) === qClean)
+        const pClean = cleanThaiPhone(t.phone);
+        if (pClean && (pClean === qClean || (qClean.length >= 9 && pClean.endsWith(qClean.slice(-9))))) {
           ids.add(t.orderId);
+        }
       });
     } else {
+      allOrders.forEach(o => {
+        if ((o.orderId || '').toUpperCase().includes(query)) ids.add(o.orderId);
+      });
       Object.values(allTickets).forEach(t => {
-        if ((t.orderId || '').toUpperCase().includes(query))
+        if ((t.orderId || '').toUpperCase().includes(query) || (t.ticketId || '').toUpperCase().includes(query)) {
           ids.add(t.orderId);
+        }
       });
     }
     return ids;

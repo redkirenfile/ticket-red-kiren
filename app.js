@@ -9,7 +9,7 @@ const CONFIG = {
   venue: 'HostBBK (MRT ลุมพินี)',
   dates: '10–11 ตุลาคม 2569',
   maxQty: 10,
-  slotCapacity: 800, // ← จำนวนที่นั่งสูงสุดต่อรอบ (ค่าพื้นฐานเริ่มต้น 800)
+  slotCapacity: 200, // ← จำนวนที่นั่งสูงสุดต่อรอบ (ค่าพื้นฐาน 200 ที่นั่ง)
 
   // ⬇️ ใส่ URL ของ Google Apps Script ที่ deploy แล้วตรงนี้
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxZYQLm5WLNKL4NqGXXRPQFHaldQTCMwb5oaENmMqGHVGC4Aqcy87JnR2oyX9MZtwCECw/exec',
@@ -153,7 +153,7 @@ function getSlotKey(dateId, slot) {
 }
 
 function getSlotCapacity(dateId, slot) {
-  return CONFIG.slotCapacity; // ล็อค 800 ที่นั่งต่อรอบตายตัว
+  return CONFIG.slotCapacity; // ล็อค 200 ที่นั่งต่อรอบตายตัว
 }
 
 function getSoldCountForSlot(dateId, slot) {
@@ -1038,15 +1038,15 @@ function showToast(msg, type = '') {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Auto-migrate legacy stock values to 800
+  // Auto-migrate legacy stock values to 200
   try {
     const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
     let changed = false;
     CONFIG.schedule.forEach(d => {
       d.slots.forEach(slot => {
         const key = getSlotKey(d.id, slot);
-        if (typeof stock[key] !== 'number' || stock[key] === 85 || stock[key] === 84 || stock[key] === 82 || stock[key] === 80 || stock[key] === 65 || stock[key] === 50) {
-          stock[key] = 800;
+        if (typeof stock[key] !== 'number' || stock[key] > 200 || stock[key] === 800 || stock[key] === 85 || stock[key] === 84 || stock[key] === 82 || stock[key] === 80 || stock[key] === 65 || stock[key] === 50) {
+          stock[key] = 200;
           changed = true;
         }
       });

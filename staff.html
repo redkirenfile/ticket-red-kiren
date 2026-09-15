@@ -1015,7 +1015,7 @@
     </div>
     <div class="stock-wrap" id="stock-table-wrap"></div>
     <div class="stock-footer">
-      <span>🟣 Capacity = ล็อค 800 ที่นั่งต่อรอบ</span>
+      <span>🟣 Capacity = ล็อค 200 ที่นั่งต่อรอบ</span>
       <span>⚫ ขายแล้ว = บัตรที่ถูกจองจริง</span>
       <span>🟢 คงเหลือ = ยังซื้อได้</span>
     </div>
@@ -1090,13 +1090,13 @@ const SCHEDULE = [
   { id:'w1-sat', dateLabel:'เสาร์ที่ 10 ต.ค. 2569',   slots:['13:00','19:00'] },
   { id:'w1-sun', dateLabel:'อาทิตย์ที่ 11 ต.ค. 2569', slots:['13:00','19:00'] },
 ];
-const DEFAULT_CAPACITY = 800;
+const DEFAULT_CAPACITY = 200;
 
 // ═ SLOT HELPERS ═════════════════════════════════════════════════
 function getSlotKey(dateId, slot) { return `${dateId}|${slot}`; }
 
 function getSlotCapacity(key) {
-  return DEFAULT_CAPACITY; // ล็อค 800 ที่นั่งต่อรอบ
+  return DEFAULT_CAPACITY; // ล็อค 200 ที่นั่งต่อรอบ
 }
 
 function getStaffSoldCount(dateId, slot) {
@@ -1208,15 +1208,15 @@ let editMode             = false;
 // INIT
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
-  // Auto-migrate legacy stock values to 80
+  // Auto-migrate legacy stock values to 200
   try {
     const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
     let changed = false;
     SCHEDULE.forEach(d => {
       d.slots.forEach(slot => {
         const key = getSlotKey(d.id, slot);
-        if (typeof stock[key] !== 'number' || stock[key] <= 0 || stock[key] === 50 || stock[key] === 65 || stock[key] === 80 || stock[key] === 82 || stock[key] === 84 || stock[key] === 85) {
-          stock[key] = 800;
+        if (typeof stock[key] !== 'number' || stock[key] <= 0 || stock[key] > 200 || stock[key] === 800 || stock[key] === 50 || stock[key] === 65 || stock[key] === 80 || stock[key] === 82 || stock[key] === 84 || stock[key] === 85) {
+          stock[key] = 200;
           changed = true;
         }
       });
@@ -2084,8 +2084,8 @@ async function syncAllFromSheets(silent = false) {
               const slotKey = key.replace('capacity|', '');
               const parsedVal = parseInt(data.settings[key], 10);
               if (!isNaN(parsedVal) && parsedVal >= 0) {
-                if (parsedVal === 85 || parsedVal === 84 || parsedVal === 82 || parsedVal === 80 || parsedVal === 65 || parsedVal === 50) {
-                  stock[slotKey] = 800;
+                if (parsedVal === 800 || parsedVal > 200 || parsedVal === 85 || parsedVal === 84 || parsedVal === 82 || parsedVal === 80 || parsedVal === 65 || parsedVal === 50) {
+                  stock[slotKey] = 200;
                 } else {
                   stock[slotKey] = parsedVal;
                 }
@@ -2282,16 +2282,9 @@ function ticketAction(action, ticketId) {
     // ซิงค์การยกเลิกเช็คอินขึ้น Google Sheets
     syncAction('undoCheckin', { ticketId: ticketId });
   } else if (action === 'cancel') {
-    if (t.cancelled) { showToastStaff('⚠️ บัตรนี้ถูกยกเลิกแล้ว'); return; }
-    if (!confirm(`❗ ยืนยันการยกเลิกบัตรใบนี้\n${ticketId}\n\nStock จะคืน 1 ที่นั่ง`)) return;
-    t.cancelled   = true;
-    t.cancelledAt = now;
-    t.checkedIn   = false;
-    t.checkInTime = null;
-    showToastStaff(`🚫 ยกเลิกบัตร ${ticketId} แล้ว`);
-    
-    // ซิงค์การยกเลิกบัตรขึ้น Google Sheets
-    syncAction('cancelTicket', { ticketId: ticketId });
+    if (!confirm(`❗ ยืนยันการยกเลิกบัตรใบนี้\n${ticketId}\n\nระบบจะลบข้อมูลออกจาก Google Sheets และคืน Stock 1 ที่นั่ง`)) return;
+    deleteTicketPermanently(ticketId, true);
+    return;
   } else if (action === 'restore') {
     if (!t.cancelled) { showToastStaff('⚠️ บัตรนี้ยังใช้งานอยู่'); return; }
     t.cancelled   = false;
@@ -2318,42 +2311,13 @@ function confirmCancelOrder() {
   const rep = allTickets[currentDetailTicketId];
   if (!rep) return;
   const name = rep.name || 'ลูกค้า';
-  const qty  = Object.values(allTickets).filter(t => t.orderId === rep.orderId && !t.cancelled).length;
-  if (!confirm(`❗ ยืนยันการยกเลิกตั๋ว ${qty} ใบของ\n\n"​${name}"\n\nบัตรจะถูกทำเครื่องหมาย Cancelled และ Stock จะคืนอัตโนมัติ`)) return;
-  cancelOrder(rep.orderId);
+  const qty  = Object.values(allTickets).filter(t => t.orderId === rep.orderId).length;
+  if (!confirm(`❗ ยืนยันการยกเลิกคำสั่งซื้อของ\n\n"${name}" (${qty} ใบ)\n\nระบบจะลบข้อมูลออกจาก Google Sheets และคืน Stock ทันที`)) return;
+  deleteOrderPermanently(rep.orderId, true);
 }
 
 function cancelOrder(orderId) {
-  const allTickets   = JSON.parse(localStorage.getItem('theater_tickets') || '{}');
-  const orderTickets = Object.values(allTickets).filter(t => t.orderId === orderId && !t.cancelled);
-  if (!orderTickets.length) { showToastStaff('⚠️ ไม่มีตั๋วที่ยังใช้งานได้'); return; }
-
-  const rep = orderTickets[0];
-  const qty = orderTickets.length;
-  const now = new Date().toISOString();
-
-  Object.keys(allTickets).forEach(tid => {
-    if (allTickets[tid].orderId === orderId) {
-      allTickets[tid].cancelled   = true;
-      allTickets[tid].cancelledAt = now;
-      allTickets[tid].checkedIn   = false;
-      allTickets[tid].checkInTime = null;
-    }
-  });
-  localStorage.setItem('theater_tickets', JSON.stringify(allTickets));
-
-  const orders = JSON.parse(localStorage.getItem('theater_orders') || '[]');
-  const oIdx   = orders.findIndex(o => o.orderId === orderId);
-  if (oIdx >= 0) { orders[oIdx].cancelled = true; orders[oIdx].cancelledAt = now;
-    localStorage.setItem('theater_orders', JSON.stringify(orders)); }
-
-  allTicketsCache = allTickets;
-  updateStats(); renderStockTable();
-  openDetailModal(currentDetailTicketId);
-  showToastStaff(`🚫 ยกเลิกตั๋ว ${qty} ใบของ "${rep.name}" — Stock คืนแล้ว`);
-  
-  // ซิงค์การยกเลิกออร์เดอร์ขึ้น Sheets
-  syncAction('cancelOrder', { orderId });
+  deleteOrderPermanently(orderId, true);
 }
 
 function confirmRestoreOrder() {
@@ -2400,8 +2364,8 @@ function restoreOrder(orderId) {
 // ═══════════════════════════════════════════════════════════════
 // PERMANENTLY DELETE TICKETS / ORDERS (Save Space)
 // ═══════════════════════════════════════════════════════════════
-function deleteTicketPermanently(ticketId) {
-  if (!confirm(`⚠️ คำเตือน: คุณต้องการลบข้อมูลบัตรใบนี้อย่างถาวรใช่หรือไม่?\n${ticketId}\n\n(การดำเนินการนี้จะลบข้อมูลออกจาก Google Sheets อย่างถาวร)`)) return;
+function deleteTicketPermanently(ticketId, skipConfirm = false) {
+  if (!skipConfirm && !confirm(`⚠️ คำเตือน: คุณต้องการยกเลิกและลบข้อมูลบัตรใบนี้อย่างถาวรใช่หรือไม่?\n${ticketId}\n\n(การดำเนินการนี้จะลบข้อมูลออกจาก Google Sheets อย่างถาวร)`)) return;
 
   const allTickets = JSON.parse(localStorage.getItem('theater_tickets') || '{}');
   const t = allTickets[ticketId];
@@ -2417,9 +2381,13 @@ function deleteTicketPermanently(ticketId) {
   const oIdx = orders.findIndex(o => o.orderId === orderId);
   if (oIdx >= 0) {
     const o = orders[oIdx];
-    // Remove the ticket from order.tickets array
-    o.tickets = (o.tickets || []).filter(tk => tk.ticketId !== ticketId);
-    o.qty = o.tickets.length;
+    // Remove the ticket from order.tickets array and ticketIds
+    o.tickets = (o.tickets || []).filter(tk => (tk.ticketId || tk) !== ticketId);
+    if (o.ticketIds) {
+      o.ticketIds = o.ticketIds.filter(id => id !== ticketId);
+    }
+    const remainingCount = Object.values(allTickets).filter(tk => tk.orderId === orderId).length;
+    o.qty = remainingCount;
     o.total = o.qty * (o.pricePerTicket || 0);
 
     if (o.qty <= 0) {
@@ -2450,7 +2418,7 @@ function deleteTicketPermanently(ticketId) {
       renderCustomerList(document.getElementById('modal-search').value);
     }
   }
-  showToastStaff('🗑️ ลบข้อมูลบัตรถาวรสำเร็จแล้ว');
+  showToastStaff('🗑️ ยกเลิกและลบข้อมูลบัตรออกจาก Google Sheets เรียบร้อย');
 }
 
 function confirmDeleteOrderPermanently() {
@@ -2461,10 +2429,12 @@ function confirmDeleteOrderPermanently() {
   
   if (!confirm(`🚨🚨 คำเตือนขั้นเด็ดขาด 🚨🚨\n\nคุณกำลังจะลบออร์เดอร์และตั๋วทั้งหมดของ "${name}" อย่างถาวร!\nการกระทำนี้จะลบข้อมูลออกจาก Google Sheets อย่างถาวร\n\nต้องการลบถาวรใช่หรือไม่?`)) return;
   
-  deleteOrderPermanently(rep.orderId);
+  deleteOrderPermanently(rep.orderId, true);
 }
 
-function deleteOrderPermanently(orderId) {
+function deleteOrderPermanently(orderId, skipConfirm = false) {
+  if (!skipConfirm && !confirm(`🚨 คำเตือน: คุณต้องการยกเลิกและลบออร์เดอร์นี้อย่างถาวรใช่หรือไม่?\n\n(การดำเนินการนี้จะลบข้อมูลออกจาก Google Sheets อย่างถาวร)`)) return;
+
   // 1. Delete all tickets under this orderId from theater_tickets
   const allTickets = JSON.parse(localStorage.getItem('theater_tickets') || '{}');
   Object.keys(allTickets).forEach(tid => {
@@ -2493,7 +2463,7 @@ function deleteOrderPermanently(orderId) {
     renderCustomerList(document.getElementById('modal-search').value);
   }
   
-  showToastStaff('🗑️ ลบข้อมูลออร์เดอร์ถาวรแล้ว');
+  showToastStaff('🗑️ ยกเลิกและลบออร์เดอร์ออกจาก Google Sheets เรียบร้อย');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2548,19 +2518,20 @@ function renderStockTable() {
     </table>`;
 }
 
-function resetAllCapacityTo800() {
+function resetAllCapacityTo200() {
   const stock = {};
   SCHEDULE.forEach(d => {
     d.slots.forEach(slot => {
       const key = getSlotKey(d.id, slot);
-      stock[key] = 800;
-      syncCapacityToSheets(key, 800);
+      stock[key] = 200;
+      syncCapacityToSheets(key, 200);
     });
   });
   localStorage.setItem('theater_stock', JSON.stringify(stock));
   renderStockTable();
-  showToastStaff('✅ ปรับ Capacity ทุกรอบเป็น 800 ที่นั่งเรียบร้อยแล้ว!');
+  showToastStaff('✅ ปรับ Capacity ทุกรอบเป็น 200 ที่นั่งเรียบร้อยแล้ว!');
 }
+const resetAllCapacityTo800 = resetAllCapacityTo200;
 
 async function adjustCapacity(key, delta) {
   const stock   = JSON.parse(localStorage.getItem('theater_stock') || '{}');
