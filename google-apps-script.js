@@ -8,7 +8,7 @@ function getSS() {
 }
 /**
  * ============================================================
- * Google Apps Script — น่าจะรู้อย่างนี้ตั้งแต่ปี 2475 Theater Ticket Backend (Updated & Optimized)
+ * Google Apps Script — แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์ (Red Kiren File) Theater Ticket Backend (Updated & Optimized)
  * ============================================================
  *
  * วิธีติดตั้ง:
@@ -630,11 +630,11 @@ function handleNewOrder(data) {
       const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, `slip-${data.orderId}.jpg`);
       
       let folder;
-      const folders = DriveApp.getFoldersByName('Theater Slips - น่าจะรู้อย่างนี้ตั้งแต่ปี 2475');
+      const folders = DriveApp.getFoldersByName('Theater Slips - แฟ้มคดีกิเลนแดง');
       if (folders.hasNext()) {
         folder = folders.next();
       } else {
-        folder = DriveApp.createFolder('Theater Slips - น่าจะรู้อย่างนี้ตั้งแต่ปี 2475');
+        folder = DriveApp.createFolder('Theater Slips - แฟ้มคดีกิเลนแดง');
       }
       const file = folder.createFile(blob);
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);

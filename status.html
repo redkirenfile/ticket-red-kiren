@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#08080a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>🎫 ตรวจสอบสถานะบัตร — น่าจะรู้อย่างนี้ตั้งแต่ปี 2475 NO TIME TO BLIND</title>
+  <title>🎫 ตรวจสอบสถานะบัตร — แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์ (Red Kiren File)</title>
   <meta name="description" content="ตรวจสอบสถานะบัตรและ QR Code ของคุณสำหรับการแสดง AFTER 6 มรดก 6 ตุลา" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -302,8 +302,8 @@
 <header class="status-header">
   <div class="header-logo">
     <span class="logo-emoji">🎭</span>
-    <span class="logo-text logo-full">น่าจะรู้อย่างนี้ตั้งแต่ปี 2475 NO TIME TO BLIND</span>
-    <span class="logo-text logo-short">NO TIME TO BLIND</span>
+    <span class="logo-text logo-full">แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์</span>
+    <span class="logo-text logo-short">RED KIREN FILE</span>
   </div>
   <nav class="header-nav">
     <a href="index.html" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--border); border-radius: 50px; text-decoration: none; color: var(--text); background: var(--surface); transition: var(--transition); font-size: 0.85rem;">
@@ -563,7 +563,7 @@ async function doSearch() {
               ? `<div style="color:#fca5a5;font-size:0.9rem;text-align:center">บัตรใบนี้ถูกยกเลิกโดยทีมงาน<br/>กรุณาติดต่อเจ้าหน้าที่</div>`
               : `<div class="qr-wrap" id="qr-status-${ticket.ticketId}"></div>
                  <div class="ticket-detail-rows">
-                   <div class="ticket-info-row"><span class="tl">การแสดง</span><span class="tv">${esc(ticket.show || 'น่าจะรู้อย่างนี้ตั้งแต่ปี 2475 NO TIME TO BLIND')}</span></div>
+                   <div class="ticket-info-row"><span class="tl">การแสดง</span><span class="tv">${esc(ticket.show || 'แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์')}</span></div>
                    <div class="ticket-info-row"><span class="tl">รอบแสดง</span><span class="tv">${esc(ticket.showDate || '—')}</span></div>
                    <div class="ticket-info-row"><span class="tl">ประเภทบัตร</span><span class="tv">${esc(ticket.type || '—')}</span></div>
                    <div class="ticket-info-row"><span class="tl">ผู้ถือบัตร</span><span class="tv">${esc(ticket.name || '—')}</span></div>
@@ -745,11 +745,11 @@ function downloadQR(ticketId) {
   ctx.fillStyle  = '#ff3b30';
   ctx.font       = 'bold 16px sans-serif';
   ctx.textAlign  = 'center';
-  ctx.fillText('NO TIME TO BLIND', tc.width / 2, 48);
+  ctx.fillText('RED KIREN FILE', tc.width / 2, 48);
 
   ctx.fillStyle  = '#ffffff';
   ctx.font       = 'bold 15px sans-serif';
-  ctx.fillText('น่าจะรู้อย่างนี้ตั้งแต่ปี 2475', tc.width / 2, 72);
+  ctx.fillText('แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์', tc.width / 2, 72);
 
   // QR Code Box (White background card for 100% scan contrast)
   if (qrCanvas) {

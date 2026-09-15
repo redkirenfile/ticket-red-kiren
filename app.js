@@ -914,11 +914,11 @@ function downloadTicket(idx) {
   ctx.fillStyle  = '#ff3b30';
   ctx.font       = 'bold 16px sans-serif';
   ctx.textAlign  = 'center';
-  ctx.fillText('NO TIME TO BLIND', tc.width / 2, 48);
+  ctx.fillText('RED KIREN FILE', tc.width / 2, 48);
 
   ctx.fillStyle  = '#ffffff';
   ctx.font       = 'bold 15px sans-serif';
-  ctx.fillText('น่าจะรู้อย่างนี้ตั้งแต่ปี 2475', tc.width / 2, 72);
+  ctx.fillText('แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์', tc.width / 2, 72);
 
   // QR Code Box (White background card for 100% scan contrast)
   const qrCanvas = srcCanvas.querySelector('canvas');
@@ -1091,7 +1091,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Analog Clock that ticks backward based on real-time clock beat
- * NO TIME TO BLIND — Time-travel backwards to 2475
  */
 function initBackwardClock() {
   const hourHand = document.getElementById('clock-hour-hand');
