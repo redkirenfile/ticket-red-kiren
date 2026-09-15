@@ -653,36 +653,6 @@
       border-radius: 8px;
       white-space: nowrap;
     }
-    .tsi-quota-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      align-items: flex-end;
-    }
-    .tsi-quota-label {
-      font-size: 0.72rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .tsi-quota-input {
-      width: 105px;
-      background: rgba(0, 0, 0, 0.6);
-      border: 1.5px solid rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      padding: 7px 10px;
-      color: #48d9e2;
-      font-family: inherit;
-      font-size: 1.05rem;
-      font-weight: 700;
-      text-align: right;
-      outline: none;
-      transition: all 0.2s ease;
-    }
-    .tsi-quota-input:focus {
-      border-color: #48d9e2;
-      box-shadow: 0 0 0 2px rgba(72, 217, 226, 0.25);
-    }
     .tsi-toggle-wrap {
       display: flex;
       align-items: center;
@@ -1035,9 +1005,9 @@
   <div class="card" id="ticket-pricing-card">
     <div class="card-header" style="align-items:flex-start">
       <div>
-        <span class="card-title">🎟️ จัดการประเภทบัตร & โควต้าที่เปิดขาย (Ticket Types & Quotas)</span>
+        <span class="card-title">🎟️ จัดการประเภทบัตรที่เปิดขาย (Ticket Types)</span>
         <div style="font-size:0.8rem;color:var(--muted);margin-top:4px">
-          สวิตช์เปิด/ปิดประเภทบัตรที่จะให้แสดงบนหน้าจองของลูกค้า และกำหนดโควต้าบัตร (ราคาขายแต่ละประเภทกำหนดตายตัวไว้แล้ว)
+          สวิตช์เปิด/ปิดประเภทบัตรที่จะให้แสดงบนหน้าจองของลูกค้า (ราคาขายแต่ละประเภทกำหนดตายตัวไว้แล้ว)
         </div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -1113,9 +1083,9 @@ const STAFF_TICKET_DEFS = [
 ];
 
 let _ticketConfig = {
-  'earlybird': { enabled: true, price: 500, quota: 0 },
-  'student':   { enabled: true, price: 550, quota: 0 },
-  'regular':   { enabled: true, price: 900, quota: 0 },
+  'earlybird': { enabled: true, price: 500 },
+  'student':   { enabled: true, price: 550 },
+  'regular':   { enabled: true, price: 900 },
 };
 
 const TICKET_TYPES = {
@@ -1351,7 +1321,7 @@ async function initSettings() {
     if (_ticketConfig[d.id]) {
       _ticketConfig[d.id].price = d.defaultPrice;
     } else {
-      _ticketConfig[d.id] = { enabled: true, price: d.defaultPrice, quota: 0 };
+      _ticketConfig[d.id] = { enabled: true, price: d.defaultPrice };
     }
     TICKET_TYPES[d.name] = d.defaultPrice;
   });
@@ -1376,9 +1346,8 @@ function renderTicketTypesManagement() {
   });
 
   container.innerHTML = STAFF_TICKET_DEFS.map(t => {
-    const cfg = _ticketConfig[t.id] || { enabled: true, price: t.defaultPrice, quota: 0 };
+    const cfg = _ticketConfig[t.id] || { enabled: true, price: t.defaultPrice };
     const isEnabled = cfg.enabled !== false;
-    const currentQuota = (cfg.quota && cfg.quota > 0) ? cfg.quota : '';
     const soldCount = soldCountsByType[t.id] || 0;
 
     return `
@@ -1389,17 +1358,12 @@ function renderTicketTypesManagement() {
           <div class="tsi-desc">${t.desc}</div>
           <div style="font-size:0.75rem;color:var(--muted);margin-top:6px">
             จำหน่ายแล้ว: <strong style="color:#ffffff">${soldCount}</strong> ใบ
-            ${currentQuota ? ` / โควต้า <strong style="color:#48d9e2">${currentQuota}</strong> ใบ` : ' (ไม่จำกัดโควต้า)'}
           </div>
         </div>
         <div class="tsi-right">
           <div class="tsi-price-wrap">
             <label class="tsi-price-label">ราคาขาย</label>
             <div class="tsi-fixed-price">${t.defaultPrice} <span style="font-size:0.75rem;color:var(--muted)">บาท</span></div>
-          </div>
-          <div class="tsi-quota-wrap">
-            <label class="tsi-quota-label">โควต้าบัตร (ใบ)</label>
-            <input type="number" class="tsi-quota-input" id="quota-${t.id}" value="${currentQuota}" min="0" placeholder="ไม่จำกัด" onchange="onTicketFieldChange('${t.id}')" />
           </div>
           <div class="tsi-toggle-wrap">
             <label class="switch">
@@ -1418,18 +1382,16 @@ function renderTicketTypesManagement() {
 
 function onTicketFieldChange(typeId) {
   const toggle = document.getElementById(`toggle-${typeId}`);
-  const quotaInput = document.getElementById(`quota-${typeId}`);
   const statusText = document.getElementById(`status-text-${typeId}`);
   const itemCard = document.getElementById(`tsi-${typeId}`);
 
   if (!toggle) return;
 
   const isEnabled = toggle.checked;
-  const quota = quotaInput ? (parseInt(quotaInput.value, 10) || 0) : 0;
   const def = STAFF_TICKET_DEFS.find(d => d.id === typeId);
   const fixedPrice = def ? def.defaultPrice : 0;
 
-  _ticketConfig[typeId] = { enabled: isEnabled, price: fixedPrice, quota: quota };
+  _ticketConfig[typeId] = { enabled: isEnabled, price: fixedPrice };
 
   // อัปเดตสไตล์ UI ทันที
   if (itemCard) {
@@ -1473,14 +1435,11 @@ async function saveAllTicketConfigs(showToastMsg) {
   // อ่านค่าจากฟอร์มทั้งหมด
   STAFF_TICKET_DEFS.forEach(d => {
     const toggle = document.getElementById(`toggle-${d.id}`);
-    const quotaInput = document.getElementById(`quota-${d.id}`);
     const isEnabled = toggle ? toggle.checked : (_ticketConfig[d.id]?.enabled !== false);
-    const quota = quotaInput ? (parseInt(quotaInput.value, 10) || 0) : (_ticketConfig[d.id]?.quota || 0);
 
     _ticketConfig[d.id] = {
       enabled: isEnabled,
-      price: d.defaultPrice,
-      quota: quota
+      price: d.defaultPrice
     };
     TICKET_TYPES[d.name] = d.defaultPrice;
   });

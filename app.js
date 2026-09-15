@@ -417,9 +417,7 @@ function renderTicketTypes() {
     return t.available === true;
   }).map(t => {
     // ราคาขายคงที่ตามที่กำหนดไว้ ไม่เปิดให้ปรับ
-    const cfg = GLOBAL_TICKET_CONFIG[t.id];
-    const quota = (cfg && cfg.quota > 0) ? cfg.quota : 0;
-    return { ...t, quota };
+    return { ...t };
   });
 
   // หากประเภทบัตรที่เลือกไว้ปัจจุบันถูกปิดขาย ให้เลือกบัตรประเภทแรกที่ยังเปิดขายอัตโนมัติ
@@ -442,7 +440,6 @@ function renderTicketTypes() {
       <div class="ticket-type-info">
         <div class="ticket-type-name">${t.name}</div>
         ${t.desc ? `<div class="ticket-type-desc">${t.desc}</div>` : ''}
-        ${t.quota > 0 ? `<div style="font-size:0.75rem;color:#48d9e2;margin-top:2px;">🎟️ โควต้าจำกัด ${t.quota} ใบ</div>` : ''}
         ${t.badgeText ? `<span class="ticket-type-badge badge-${t.badge}">${t.badgeText}</span>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:16px">
