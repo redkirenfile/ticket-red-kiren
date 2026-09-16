@@ -645,7 +645,7 @@ async function doSearch() {
           <div class="order-card-rows">
             <div class="order-info-item">
               <div class="oi-label">ชื่อผู้ซื้อ</div>
-              <div class="oi-val">${esc(rep.name || '—')}</div>
+              <div class="oi-val">${esc(rep.name || '—')}${rep.nickname ? ` (${esc(rep.nickname)})` : ''}</div>
             </div>
             <div class="order-info-item">
               <div class="oi-label">เบอร์โทร</div>
@@ -822,7 +822,8 @@ function downloadQR(ticketId) {
   // Info details
   ctx.fillStyle = '#ffffff';
   ctx.font      = 'bold 16px sans-serif';
-  ctx.fillText(ticket.name || '', tc.width / 2, 340);
+  const displayName = ticket.nickname ? `${ticket.name} (${ticket.nickname})` : (ticket.name || '');
+  ctx.fillText(displayName, tc.width / 2, 340);
 
   ctx.fillStyle = '#d4d4d8';
   ctx.font      = '13px sans-serif';

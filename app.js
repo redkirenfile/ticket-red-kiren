@@ -223,6 +223,7 @@ function getEarlybirdRemainingSeats(dateId, slot) {
 function saveFormState() {
   state.savedForm = {
     name:       document.getElementById('f-name')?.value  || '',
+    nickname:   document.getElementById('f-nickname')?.value || '',
     phone:      document.getElementById('f-phone')?.value || '',
     email:      document.getElementById('f-email')?.value || '',
     note:       document.getElementById('f-note')?.value  || '',
@@ -234,10 +235,11 @@ function restoreForm() {
   if (!state.savedForm) return;
   const f = state.savedForm;
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-  set('f-name',  f.name);
-  set('f-phone', f.phone);
-  set('f-email', f.email);
-  set('f-note',  f.note);
+  set('f-name',     f.name);
+  set('f-nickname', f.nickname);
+  set('f-phone',    f.phone);
+  set('f-email',    f.email);
+  set('f-note',     f.note);
   if (f.slipBase64) {
     state.slipBase64 = f.slipBase64;
     const preview = document.getElementById('slip-preview');
@@ -768,11 +770,12 @@ function renderRecap() {
 async function submitOrder(event) {
   event.preventDefault();
 
-  const name  = document.getElementById('f-name').value.trim();
-  const phone = cleanThaiPhone(document.getElementById('f-phone').value.trim());
-  const email = document.getElementById('f-email').value.trim();
-  const note  = document.getElementById('f-note').value.trim();
-  const type  = getActiveTicketType(state.selectedTypeId);
+  const name     = document.getElementById('f-name').value.trim();
+  const nickname = (document.getElementById('f-nickname')?.value || '').trim();
+  const phone    = cleanThaiPhone(document.getElementById('f-phone').value.trim());
+  const email    = document.getElementById('f-email').value.trim();
+  const note     = document.getElementById('f-note').value.trim();
+  const type     = getActiveTicketType(state.selectedTypeId);
 
   if (!type)              return showToast('❌ กรุณาเลือกประเภทบัตร', 'error');
   if (!state.slipBase64) return showToast('❌ กรุณาแนบสลิปการโอนเงิน', 'error');
@@ -802,6 +805,7 @@ async function submitOrder(event) {
       ticketNum: i,
       orderId,
       name,
+      nickname,
       phone,
       email,
       note,
@@ -819,6 +823,7 @@ async function submitOrder(event) {
   const order = {
     orderId,
     name,
+    nickname,
     phone,
     email,
     note,
@@ -853,6 +858,7 @@ async function submitOrder(event) {
           orderId:        order.orderId,
           timestamp:      new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
           name:           order.name,
+          nickname:       order.nickname || '',
           phone:          order.phone,
           email:          order.email  || '—',
           ticketType:     order.typeName,
@@ -922,7 +928,7 @@ function removeSlip(e) {
 function renderConfirmation() {
   const o = state.currentOrder;
   document.getElementById('conf-order-id').textContent = o.orderId;
-  document.getElementById('conf-name').textContent     = o.name;
+  document.getElementById('conf-name').textContent     = o.nickname ? `${o.name} (${o.nickname})` : o.name;
   document.getElementById('conf-show').textContent     = o.showDate || '—';
   document.getElementById('conf-type').textContent     = o.typeName;
   document.getElementById('conf-qty').textContent      = `${o.qty} ใบ`;
@@ -1059,7 +1065,8 @@ function downloadTicket(idx) {
   // Info details
   ctx.fillStyle = '#ffffff';
   ctx.font      = 'bold 16px sans-serif';
-  ctx.fillText(ticket.name || '', tc.width / 2, 340);
+  const displayName = ticket.nickname ? `${ticket.name} (${ticket.nickname})` : (ticket.name || '');
+  ctx.fillText(displayName, tc.width / 2, 340);
 
   ctx.fillStyle = '#d4d4d8';
   ctx.font      = '13px sans-serif';

@@ -366,6 +366,7 @@ function doGet(e) {
       const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'เลขที่ออเดอร์', 'เลขออเดอร์', 'orderid', 'order id']) + 1;
       const idxOTs = findColIndex(oHeaders, ['วันเวลา', 'เวลา', 'วันที่', 'timestamp', 'date']) + 1;
       const idxOName = findColIndex(oHeaders, ['ชื่อ-นามสกุล', 'ชื่อนามสกุล', 'ชื่อ', 'name', 'fullname']) + 1;
+      const idxONick = findColIndex(oHeaders, ['ชื่อเล่น', 'nickname', 'nick']) + 1;
       const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'เบอร์โทรศัพท์', 'เบอร์', 'phone', 'tel']) + 1;
       const idxOEmail = findColIndex(oHeaders, ['อีเมล', 'email']) + 1;
       const idxOType = findColIndex(oHeaders, ['ประเภทบัตร', 'ประเภท', 'tickettype', 'type']) + 1;
@@ -382,6 +383,7 @@ function doGet(e) {
       const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']) + 1;
       const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']) + 1;
       const idxTName = findColIndex(tHeaders, ['ชื่อ-นามสกุล', 'ชื่อ', 'name']) + 1;
+      const idxTNick = findColIndex(tHeaders, ['ชื่อเล่น', 'nickname', 'nick']) + 1;
       const idxTPhone = findColIndex(tHeaders, ['เบอร์โทร', 'phone', 'tel']) + 1;
       const idxTType = findColIndex(tHeaders, ['ประเภทบัตร', 'type']) + 1;
       const idxTStatus = findColIndex(tHeaders, ['สถานะเช็คอิน', 'สถานะ', 'status']) + 1;
@@ -399,6 +401,7 @@ function doGet(e) {
           orderId: row[idxOId - 1],
           timestamp: row[idxOTs - 1],
           name: row[idxOName - 1],
+          nickname: idxONick ? (row[idxONick - 1] || '') : '',
           phone: readCleanPhone(row[idxOPhone - 1]),
           email: idxOEmail ? row[idxOEmail - 1] : '',
           typeName: row[idxOType - 1],
@@ -439,6 +442,7 @@ function doGet(e) {
           ticketNum: ticketNum,
           orderId: oId,
           name: row[idxTName - 1] || parentOrder.name || '',
+          nickname: (idxTNick ? row[idxTNick - 1] : '') || parentOrder.nickname || '',
           phone: readCleanPhone(row[idxTPhone - 1]) || parentOrder.phone || '',
           email: parentOrder.email || '',
           note: parentOrder.note || '',
@@ -728,6 +732,7 @@ function handleNewOrder(data) {
     'เลขที่คำสั่งซื้อ',
     'วันเวลา',
     'ชื่อ-นามสกุล',
+    'ชื่อเล่น',
     'เบอร์โทร',
     'อีเมล',
     'ประเภทบัตร',
@@ -751,6 +756,17 @@ function handleNewOrder(data) {
   assignOrderCol(['เลขที่คำสั่งซื้อ', 'orderid', 'order id'], data.orderId);
   assignOrderCol(['วันเวลา', 'timestamp', 'date'], data.timestamp);
   assignOrderCol(['ชื่อ-นามสกุล', 'name', 'fullname'], data.name);
+  
+  let nickIdx = findColIndex(oHeaders, ['ชื่อเล่น', 'nickname', 'nick']);
+  if (nickIdx < 0 && data.nickname) {
+    const newCol = ordersSheet.getLastColumn() + 1;
+    ordersSheet.getRange(1, newCol).setValue('ชื่อเล่น');
+    ordersSheet.getRange(1, newCol).setBackground('#4a2080').setFontColor('#ffffff').setFontWeight('bold');
+    oHeaders.push('ชื่อเล่น');
+    nickIdx = newCol - 1;
+  }
+  if (nickIdx >= 0) rowData[nickIdx] = data.nickname || '—';
+
   assignOrderCol(['เบอร์โทร', 'phone', 'tel'], cleanPhoneVal);
   assignOrderCol(['อีเมล', 'email'], data.email || '—');
   assignOrderCol(['ประเภทบัตร', 'tickettype', 'type'], data.ticketType);
@@ -781,6 +797,7 @@ function handleNewOrder(data) {
     'รหัสบัตร',
     'เลขที่คำสั่งซื้อ',
     'ชื่อ-นามสกุล',
+    'ชื่อเล่น',
     'เบอร์โทร',
     'ประเภทบัตร',
     'รอบการแสดง',
@@ -800,6 +817,15 @@ function handleNewOrder(data) {
     tSlipIdx = newCol - 1;
   }
   
+  let tNickIdx = findColIndex(tHeaders, ['ชื่อเล่น', 'nickname', 'nick']);
+  if (tNickIdx < 0 && data.nickname) {
+    const newCol = ticketsSheet.getLastColumn() + 1;
+    ticketsSheet.getRange(1, newCol).setValue('ชื่อเล่น');
+    ticketsSheet.getRange(1, newCol).setBackground('#4a2080').setFontColor('#ffffff').setFontWeight('bold');
+    tHeaders.push('ชื่อเล่น');
+    tNickIdx = newCol - 1;
+  }
+
   ticketIds.forEach(tid => {
     const tRowData = [];
     const assignTCol = (names, val) => {
@@ -809,6 +835,7 @@ function handleNewOrder(data) {
     assignTCol(['รหัสบัตร', 'ticketid'], tid);
     assignTCol(['เลขที่คำสั่งซื้อ', 'orderid'], data.orderId);
     assignTCol(['ชื่อ-นามสกุล', 'name'], data.name);
+    if (tNickIdx >= 0) tRowData[tNickIdx] = data.nickname || '—';
     assignTCol(['เบอร์โทร', 'phone'], cleanPhoneVal);
     assignTCol(['ประเภทบัตร', 'type'], data.ticketType);
     assignTCol(['รอบการแสดง', 'showdate'], data.showDate || '—');

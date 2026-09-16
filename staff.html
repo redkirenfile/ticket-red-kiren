@@ -936,6 +936,10 @@
         <input type="text" id="sb-name" required />
       </div>
       <div class="booking-group">
+        <label for="sb-nickname">ชื่อเล่น</label>
+        <input type="text" id="sb-nickname" placeholder="เช่น บอส, เจน" />
+      </div>
+      <div class="booking-group">
         <label for="sb-phone">เบอร์โทรศัพท์ <span style="color:var(--error)">*</span></label>
         <input type="tel" id="sb-phone" pattern="[0-9]{9,10}" required />
       </div>
@@ -1585,6 +1589,7 @@ function renderCustomerList(query) {
     const q        = query.toLowerCase();
     const searched = filtered.filter(t =>
       (t.name||'').toLowerCase().includes(q) ||
+      (t.nickname||'').toLowerCase().includes(q) ||
       (t.phone||'').includes(q) ||
       (t.orderId||'').toLowerCase().includes(q) ||
       (t.ticketId||'').toLowerCase().includes(q)
@@ -1631,7 +1636,7 @@ function renderRows(rows, list, countEl) {
       <div class="customer-item" onclick="openDetailModal('${t.ticketId}')">
         <div class="customer-avatar ${isAllChecked?'avatar-checked':'avatar-pending'}" style="${isAllCancelled?'opacity:0.4':''}">${escHtml(initial)}</div>
         <div class="customer-info">
-          <div class="customer-name" style="${isAllCancelled?'text-decoration:line-through;opacity:0.6':''}">${escHtml(t.name||'—')}</div>
+          <div class="customer-name" style="${isAllCancelled?'text-decoration:line-through;opacity:0.6':''}">${escHtml(t.name||'—')}${t.nickname ? ` <span style="font-size:0.8rem;color:#a1a1aa;font-weight:400">(${escHtml(t.nickname)})</span>` : ''}</div>
           <div class="customer-meta">📞 ${escHtml(t.phone||'—')} · ${escHtml(t.type||'—')} · ${allT.length} ใบ${isAllCancelled?' · ยกเลิก':''}</div>
           <div class="customer-tid">${escHtml(t.orderId||'—')}</div>
         </div>
@@ -1662,7 +1667,7 @@ function openDetailModal(ticketId) {
 
   // --- Fill VIEW mode ---
   document.getElementById('dv-avatar').textContent = (rep.name||'?').charAt(0);
-  document.getElementById('dv-name').textContent   = rep.name   || '—';
+  document.getElementById('dv-name').textContent   = rep.nickname ? `${rep.name} (${rep.nickname})` : (rep.name || '—');
   document.getElementById('dv-phone').textContent  = `📞 ${rep.phone||'—'}`;
   document.getElementById('dv-email').textContent  = rep.email  ? `✉️ ${rep.email}` : '';
   document.getElementById('dv-orderid').textContent   = orderId   || '—';
@@ -2181,7 +2186,7 @@ function showResult(type, icon, title, ticket, extra) {
   wrap.style.display = 'block';
   let rows = '';
   if (ticket?.name) {
-    rows += `<div class="result-row"><span>ชื่อ-นามสกุล</span><strong>${ticket.name}</strong></div>`;
+    rows += `<div class="result-row"><span>ชื่อ-นามสกุล</span><strong>${ticket.name}${ticket.nickname ? ` (${ticket.nickname})` : ''}</strong></div>`;
     rows += `<div class="result-row"><span>เบอร์โทร</span><strong>${ticket.phone||'—'}</strong></div>`;
     if (ticket.type) rows += `<div class="result-row"><span>ประเภทบัตร</span><strong>${ticket.type}</strong></div>`;
     if (ticket.showDate) rows += `<div class="result-row"><span>รอบแสดง</span><strong>${ticket.showDate}</strong></div>`;
@@ -2674,6 +2679,7 @@ function updateQuotaBookingPrice() {
 
 async function submitQuotaBooking() {
   const nameEl     = document.getElementById('sb-name');
+  const nicknameEl = document.getElementById('sb-nickname');
   const phoneEl    = document.getElementById('sb-phone');
   const emailEl    = document.getElementById('sb-email');
   const showdateEl = document.getElementById('sb-showdate');
@@ -2683,10 +2689,11 @@ async function submitQuotaBooking() {
 
   if (!nameEl || !phoneEl || !showdateEl || !typeEl || !qtyEl) return;
 
-  const name  = nameEl.value.trim();
+  const name     = nameEl.value.trim();
+  const nickname = nicknameEl ? nicknameEl.value.trim() : '';
   const rawPhone = phoneEl.value.trim();
-  const phone = cleanThaiPhone(rawPhone);
-  const email = emailEl.value.trim();
+  const phone    = cleanThaiPhone(rawPhone);
+  const email    = emailEl.value.trim();
   const showDateLabel = showdateEl.value;
   const ticketType = typeEl.value;
   const qty   = parseInt(qtyEl.value) || 1;
@@ -2730,6 +2737,7 @@ async function submitQuotaBooking() {
       ticketNum: i,
       orderId,
       name,
+      nickname,
       phone,
       email,
       note:       note ? `[โควต้าแอดมิน] ${note}` : '[โควต้าแอดมิน]',
@@ -2750,6 +2758,7 @@ async function submitQuotaBooking() {
   const order = {
     orderId,
     name,
+    nickname,
     phone,
     email,
     note:       note ? `[โควต้าแอดมิน] ${note}` : '[โควต้าแอดมิน]',
@@ -2788,6 +2797,7 @@ async function submitQuotaBooking() {
 
     // Clear form inputs
     nameEl.value = '';
+    if (nicknameEl) nicknameEl.value = '';
     phoneEl.value = '';
     emailEl.value = '';
     qtyEl.value = '1';
@@ -2810,6 +2820,7 @@ async function submitQuotaBooking() {
             orderId:        order.orderId,
             timestamp:      new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
             name:           order.name + ' (ทีมงานออกตั๋ว)',
+            nickname:       order.nickname || '',
             phone:          order.phone,
             email:          order.email  || '—',
             ticketType:     order.typeName,
