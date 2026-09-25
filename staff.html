@@ -2322,17 +2322,51 @@ function ticketAction(action, ticketId) {
     // ซิงค์การยกเลิกเช็คอินขึ้น Google Sheets
     syncAction('undoCheckin', { ticketId: ticketId });
   } else if (action === 'cancel') {
-    if (!confirm(`❗ ยืนยันการยกเลิกบัตรใบนี้\n${ticketId}\n\nระบบจะลบข้อมูลออกจาก Google Sheets และคืน Stock 1 ที่นั่ง`)) return;
-    deleteTicketPermanently(ticketId, true);
-    return;
+    if (!confirm(`❗ ยืนยันการยกเลิกบัตรใบนี้\n${ticketId}\n\nบัตรจะถูกย้ายไปที่แท็บ "🚫 ยกเลิกแล้ว" และคืน Stock 1 ที่นั่ง\n(สามารถกู้คืนหรือลบถาวรได้ในภายหลัง)`)) return;
+    t.cancelled   = true;
+    t.cancelledAt = now;
+    t.checkedIn   = false;
+    t.checkInTime = null;
+    showToastStaff(`🚫 ย้ายบัตร ${ticketId} ไปที่แท็บยกเลิกแล้ว`);
+    addLog('cancel', ticketId, t.name, t.type, 'ยกเลิกบัตร');
+
+    allTickets[ticketId] = t;
+
+    // ตรวจสอบว่าตั๋วทุกใบในออร์เดอร์นี้ถูกยกเลิกทั้งหมดหรือไม่ เพื่ออัปเดตสถานะของออร์เดอร์
+    const orders = JSON.parse(localStorage.getItem('theater_orders') || '[]');
+    const oIdx = orders.findIndex(o => o.orderId === t.orderId);
+    if (oIdx >= 0) {
+      const orderTickets = Object.values(allTickets).filter(tk => tk.orderId === t.orderId);
+      const allCancelled = orderTickets.length > 0 && orderTickets.every(tk => tk.cancelled);
+      if (allCancelled) {
+        orders[oIdx].cancelled = true;
+        orders[oIdx].cancelledAt = now;
+      }
+      localStorage.setItem('theater_orders', JSON.stringify(orders));
+    }
+
+    // ซิงค์การยกเลิกบัตรขึ้น Google Sheets
+    syncAction('cancelTicket', { ticketId: ticketId, orderId: t.orderId });
   } else if (action === 'restore') {
     if (!t.cancelled) { showToastStaff('⚠️ บัตรนี้ยังใช้งานอยู่'); return; }
     t.cancelled   = false;
     t.cancelledAt = null;
     showToastStaff(`♻️ กู้คืนบัตร ${ticketId} แล้ว`);
-    
+    addLog('restore', ticketId, t.name, t.type, 'กู้คืนบัตร');
+
+    allTickets[ticketId] = t;
+
+    // ปลดสถานะยกเลิกของออร์เดอร์หากมีการกู้คืนบัตร
+    const orders = JSON.parse(localStorage.getItem('theater_orders') || '[]');
+    const oIdx = orders.findIndex(o => o.orderId === t.orderId);
+    if (oIdx >= 0 && orders[oIdx].cancelled) {
+      orders[oIdx].cancelled = false;
+      orders[oIdx].cancelledAt = null;
+      localStorage.setItem('theater_orders', JSON.stringify(orders));
+    }
+
     // ซิงค์การกู้คืนบัตรขึ้น Google Sheets
-    syncAction('restoreTicket', { ticketId: ticketId });
+    syncAction('restoreTicket', { ticketId: ticketId, orderId: t.orderId });
   }
 
   allTickets[ticketId] = t;
@@ -2341,6 +2375,9 @@ function ticketAction(action, ticketId) {
   updateStats();
   renderStockTable();
   openDetailModal(ticketId); // re-render
+  if (document.getElementById('modal-overlay').classList.contains('open')) {
+    renderCustomerList(document.getElementById('modal-search').value);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2351,13 +2388,52 @@ function confirmCancelOrder() {
   const rep = allTickets[currentDetailTicketId];
   if (!rep) return;
   const name = rep.name || 'ลูกค้า';
-  const qty  = Object.values(allTickets).filter(t => t.orderId === rep.orderId).length;
-  if (!confirm(`❗ ยืนยันการยกเลิกคำสั่งซื้อของ\n\n"${name}" (${qty} ใบ)\n\nระบบจะลบข้อมูลออกจาก Google Sheets และคืน Stock ทันที`)) return;
-  deleteOrderPermanently(rep.orderId, true);
+  const orderTickets = Object.values(allTickets).filter(t => t.orderId === rep.orderId);
+  const qty  = orderTickets.length;
+  if (!confirm(`❗ ยืนยันการยกเลิกคำสั่งซื้อของ\n\n"${name}" (${qty} ใบ)\n\nบัตรทั้งหมดจะถูกย้ายไปที่แท็บ "🚫 ยกเลิกแล้ว" และคืน Stock ทันที\n(สามารถกู้คืนหรือลบถาวรได้ในภายหลัง)`)) return;
+  cancelOrder(rep.orderId);
 }
 
 function cancelOrder(orderId) {
-  deleteOrderPermanently(orderId, true);
+  const allTickets = JSON.parse(localStorage.getItem('theater_tickets') || '{}');
+  const orderTickets = Object.values(allTickets).filter(t => t.orderId === orderId);
+  if (!orderTickets.length) return;
+
+  const rep = orderTickets[0];
+  const now = new Date().toISOString();
+
+  Object.keys(allTickets).forEach(tid => {
+    if (allTickets[tid].orderId === orderId) {
+      allTickets[tid].cancelled   = true;
+      allTickets[tid].cancelledAt = now;
+      allTickets[tid].checkedIn   = false;
+      allTickets[tid].checkInTime = null;
+    }
+  });
+  localStorage.setItem('theater_tickets', JSON.stringify(allTickets));
+
+  const orders = JSON.parse(localStorage.getItem('theater_orders') || '[]');
+  const oIdx   = orders.findIndex(o => o.orderId === orderId);
+  if (oIdx >= 0) {
+    orders[oIdx].cancelled = true;
+    orders[oIdx].cancelledAt = now;
+    localStorage.setItem('theater_orders', JSON.stringify(orders));
+  }
+
+  allTicketsCache = allTickets;
+  updateStats();
+  renderStockTable();
+  if (currentDetailTicketId && allTickets[currentDetailTicketId]?.orderId === orderId) {
+    openDetailModal(currentDetailTicketId);
+  }
+  if (document.getElementById('modal-overlay').classList.contains('open')) {
+    renderCustomerList(document.getElementById('modal-search').value);
+  }
+  showToastStaff(`🚫 ย้ายออร์เดอร์ของ "${rep.name}" ไปที่แท็บยกเลิกแล้ว`);
+  addLog('cancel', orderId, rep.name, rep.type, 'ยกเลิกออร์เดอร์');
+
+  // ซิงค์การยกเลิกออร์เดอร์ขึ้น Sheets
+  syncAction('cancelOrder', { orderId });
 }
 
 function confirmRestoreOrder() {
@@ -2389,13 +2465,21 @@ function restoreOrder(orderId) {
 
   const orders = JSON.parse(localStorage.getItem('theater_orders') || '[]');
   const oIdx   = orders.findIndex(o => o.orderId === orderId);
-  if (oIdx >= 0) { orders[oIdx].cancelled = false; orders[oIdx].cancelledAt = null;
-    localStorage.setItem('theater_orders', JSON.stringify(orders)); }
+  if (oIdx >= 0) {
+    orders[oIdx].cancelled = false;
+    orders[oIdx].cancelledAt = null;
+    localStorage.setItem('theater_orders', JSON.stringify(orders));
+  }
 
   allTicketsCache = allTickets;
-  updateStats(); renderStockTable();
+  updateStats();
+  renderStockTable();
   openDetailModal(currentDetailTicketId);
+  if (document.getElementById('modal-overlay').classList.contains('open')) {
+    renderCustomerList(document.getElementById('modal-search').value);
+  }
   showToastStaff(`♻️ กู้คืนออร์เดอร์ ${qty} ใบของ "${rep.name}" แล้ว`);
+  addLog('restore', orderId, rep.name, rep.type, 'กู้คืนออร์เดอร์');
   
   // ซิงค์การกู้คืนออร์เดอร์ขึ้น Sheets
   syncAction('restoreOrder', { orderId });
@@ -2405,7 +2489,7 @@ function restoreOrder(orderId) {
 // PERMANENTLY DELETE TICKETS / ORDERS (Save Space)
 // ═══════════════════════════════════════════════════════════════
 function deleteTicketPermanently(ticketId, skipConfirm = false) {
-  if (!skipConfirm && !confirm(`⚠️ คำเตือน: คุณต้องการยกเลิกและลบข้อมูลบัตรใบนี้อย่างถาวรใช่หรือไม่?\n${ticketId}\n\n(การดำเนินการนี้จะลบข้อมูลออกจาก Google Sheets อย่างถาวร)`)) return;
+  if (!skipConfirm && !confirm(`⚠️ คำเตือน: คุณต้องการลบข้อมูลบัตรใบนี้อย่างถาวรใช่หรือไม่?\n${ticketId}\n\n(การดำเนินการนี้จะลบข้อมูลออกจาก Google Sheets อย่างถาวรและไม่สามารถกู้คืนได้)`)) return;
 
   const allTickets = JSON.parse(localStorage.getItem('theater_tickets') || '{}');
   const t = allTickets[ticketId];
@@ -2458,7 +2542,7 @@ function deleteTicketPermanently(ticketId, skipConfirm = false) {
       renderCustomerList(document.getElementById('modal-search').value);
     }
   }
-  showToastStaff('🗑️ ยกเลิกและลบข้อมูลบัตรออกจาก Google Sheets เรียบร้อย');
+  showToastStaff('🗑️ ลบข้อมูลบัตรออกจาก Google Sheets อย่างถาวรเรียบร้อย');
 }
 
 function confirmDeleteOrderPermanently() {
@@ -2467,13 +2551,13 @@ function confirmDeleteOrderPermanently() {
   if (!rep) return;
   const name = rep.name || 'ลูกค้า';
   
-  if (!confirm(`🚨🚨 คำเตือนขั้นเด็ดขาด 🚨🚨\n\nคุณกำลังจะลบออร์เดอร์และตั๋วทั้งหมดของ "${name}" อย่างถาวร!\nการกระทำนี้จะลบข้อมูลออกจาก Google Sheets อย่างถาวร\n\nต้องการลบถาวรใช่หรือไม่?`)) return;
+  if (!confirm(`🚨🚨 คำเตือนขั้นเด็ดขาด 🚨🚨\n\nคุณกำลังจะลบออร์เดอร์และตั๋วทั้งหมดของ "${name}" อย่างถาวร!\nการกระทำนี้จะลบข้อมูลออกจาก Google Sheets อย่างถาวรและไม่สามารถกู้คืนได้\n\nต้องการลบถาวรใช่หรือไม่?`)) return;
   
   deleteOrderPermanently(rep.orderId, true);
 }
 
 function deleteOrderPermanently(orderId, skipConfirm = false) {
-  if (!skipConfirm && !confirm(`🚨 คำเตือน: คุณต้องการยกเลิกและลบออร์เดอร์นี้อย่างถาวรใช่หรือไม่?\n\n(การดำเนินการนี้จะลบข้อมูลออกจาก Google Sheets อย่างถาวร)`)) return;
+  if (!skipConfirm && !confirm(`🚨 คำเตือน: คุณต้องการลบออร์เดอร์นี้อย่างถาวรใช่หรือไม่?\n\n(การดำเนินการนี้จะลบข้อมูลออกจาก Google Sheets อย่างถาวรและไม่สามารถกู้คืนได้)`)) return;
 
   // 1. Delete all tickets under this orderId from theater_tickets
   const allTickets = JSON.parse(localStorage.getItem('theater_tickets') || '{}');
@@ -2503,7 +2587,7 @@ function deleteOrderPermanently(orderId, skipConfirm = false) {
     renderCustomerList(document.getElementById('modal-search').value);
   }
   
-  showToastStaff('🗑️ ยกเลิกและลบออร์เดอร์ออกจาก Google Sheets เรียบร้อย');
+  showToastStaff('🗑️ ลบออร์เดอร์ออกจาก Google Sheets อย่างถาวรเรียบร้อย');
 }
 
 // ═══════════════════════════════════════════════════════════════

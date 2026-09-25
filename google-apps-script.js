@@ -119,8 +119,102 @@ function doPost(e) {
       return output({ success: false, error: 'ไม่พบรหัสบัตร ' + ticketId });
     }
 
-    // 2.1 จัดการยกเลิกตั๋ว / ลบตั๋วถาวร (ให้แถวหายไปจาก Google Sheets ทันทีตามต้องการ)
-    if (data.action === 'cancelTicket' || data.action === 'deleteTicket') {
+    // 2.1 จัดการยกเลิกตั๋วรายใบ (Soft Cancel: เปลี่ยนสถานะเป็น "ยกเลิกแล้ว" ไม่ลบแถว เพื่อให้อยู่ในแท็บยกเลิกแล้ว)
+    if (data.action === 'cancelTicket') {
+      const ss = getSS();
+      const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
+      const ticketId = data.ticketId;
+
+      const tData = ticketsSheet.getDataRange().getValues();
+      const tHeaders = tData[0] || [];
+      const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']) + 1;
+      const idxTStatus = findColIndex(tHeaders, ['สถานะเช็คอิน', 'สถานะ', 'status']) + 1;
+      const idxTTime = findColIndex(tHeaders, ['เวลาเช็คอิน', 'time']) + 1;
+
+      let foundRow = -1;
+      for (let i = 1; i < tData.length; i++) {
+        if (String(tData[i][idxTId - 1]).trim() === String(ticketId).trim()) {
+          foundRow = i + 1;
+          break;
+        }
+      }
+
+      if (foundRow >= 0) {
+        if (idxTStatus > 0) {
+          const statusCell = ticketsSheet.getRange(foundRow, idxTStatus);
+          statusCell.setValue('ยกเลิกแล้ว');
+          statusCell.setBackground('#f8d7da');
+        }
+        if (idxTTime > 0) {
+          ticketsSheet.getRange(foundRow, idxTTime).setValue('');
+        }
+        return output({ success: true, message: 'ยกเลิกบัตรเรียบร้อยแล้ว' });
+      }
+      return output({ success: false, error: 'ไม่พบรหัสบัตร ' + ticketId });
+    }
+
+    // 2.2 จัดการยกเลิกคำสั่งซื้อ (Soft Cancel: เปลี่ยนสถานะตั๋วทุกใบของออร์เดอร์เป็น "ยกเลิกแล้ว")
+    if (data.action === 'cancelOrder') {
+      const ss = getSS();
+      const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
+      const orderId = data.orderId;
+
+      const tData = ticketsSheet.getDataRange().getValues();
+      const tHeaders = tData[0] || [];
+      const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']) + 1;
+      const idxTStatus = findColIndex(tHeaders, ['สถานะเช็คอิน', 'สถานะ', 'status']) + 1;
+      const idxTTime = findColIndex(tHeaders, ['เวลาเช็คอิน', 'time']) + 1;
+
+      let count = 0;
+      if (idxTOId > 0 && idxTStatus > 0) {
+        for (let i = 1; i < tData.length; i++) {
+          if (String(tData[i][idxTOId - 1]).trim() === String(orderId).trim()) {
+            const rowNum = i + 1;
+            const statusCell = ticketsSheet.getRange(rowNum, idxTStatus);
+            statusCell.setValue('ยกเลิกแล้ว');
+            statusCell.setBackground('#f8d7da');
+            if (idxTTime > 0) {
+              ticketsSheet.getRange(rowNum, idxTTime).setValue('');
+            }
+            count++;
+          }
+        }
+      }
+      return output({ success: true, message: `ยกเลิกออร์เดอร์ ${count} ใบเรียบร้อยแล้ว` });
+    }
+
+    // 2.3 จัดการกู้คืนคำสั่งซื้อ (เปลี่ยนสถานะตั๋วทุกใบของออร์เดอร์กลับเป็น "ยังไม่เช็คอิน")
+    if (data.action === 'restoreOrder') {
+      const ss = getSS();
+      const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
+      const orderId = data.orderId;
+
+      const tData = ticketsSheet.getDataRange().getValues();
+      const tHeaders = tData[0] || [];
+      const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']) + 1;
+      const idxTStatus = findColIndex(tHeaders, ['สถานะเช็คอิน', 'สถานะ', 'status']) + 1;
+      const idxTTime = findColIndex(tHeaders, ['เวลาเช็คอิน', 'time']) + 1;
+
+      let count = 0;
+      if (idxTOId > 0 && idxTStatus > 0) {
+        for (let i = 1; i < tData.length; i++) {
+          if (String(tData[i][idxTOId - 1]).trim() === String(orderId).trim()) {
+            const rowNum = i + 1;
+            const statusCell = ticketsSheet.getRange(rowNum, idxTStatus);
+            statusCell.setValue('ยังไม่เช็คอิน');
+            statusCell.setBackground('#ffffff');
+            if (idxTTime > 0) {
+              ticketsSheet.getRange(rowNum, idxTTime).setValue('');
+            }
+            count++;
+          }
+        }
+      }
+      return output({ success: true, message: `กู้คืนออร์เดอร์ ${count} ใบเรียบร้อยแล้ว` });
+    }
+
+    // 2.4 จัดการลบตั๋วถาวร (ลบแถวออกจาก Google Sheets เมื่อกด ลบถาวร)
+    if (data.action === 'deleteTicket') {
       const ss = getSS();
       const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
       const ticketId = data.ticketId;
@@ -183,8 +277,8 @@ function doPost(e) {
       return output({ success: true, message: 'ลบตั๋วออกจาก Google Sheets เรียบร้อยแล้ว' });
     }
 
-    // 3. จัดการยกเลิกคำสั่งซื้อ / ลบคำสั่งซื้อถาวร (ลบตั๋วทุกใบและออร์เดอร์ออกจาก Google Sheets ทันที)
-    if (data.action === 'cancelOrder' || data.action === 'deleteOrder') {
+    // 2.5 จัดการลบคำสั่งซื้อถาวร (ลบตั๋วทุกใบและออร์เดอร์ออกจาก Google Sheets เมื่อกด ลบถาวร)
+    if (data.action === 'deleteOrder') {
       const ss = getSS();
       const ordersSheet = getOrCreateSheet(ss, SHEET_ORDERS, []);
       const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
