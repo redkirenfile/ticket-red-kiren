@@ -147,6 +147,8 @@ const state = {
   selectedSlot:   null,
   selectedTypeId: null,
   qty:            1,
+  promoCode:      null,
+  discountAmount: 0,
   currentOrder:   null,
   slipBase64:     null,
   carouselIndex:  0,
@@ -398,7 +400,7 @@ function selectDate(dateId) {
   document.querySelectorAll('.date-card').forEach(el => el.classList.remove('selected'));
   document.getElementById(`dc-${dateId}`)?.classList.add('selected');
 
-  ['slot-section','type-section','quantity-section','price-summary','payment-section'].forEach(id => {
+  ['slot-section','type-section','quantity-section','discount-section','price-summary','payment-section'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -440,7 +442,7 @@ function selectSlot(slot) {
   document.querySelectorAll('.slot-btn').forEach(el => el.classList.remove('selected'));
   document.getElementById(`sb-${slot.replace(':','')}`)?.classList.add('selected');
 
-  ['quantity-section','price-summary','payment-section'].forEach(id => {
+  ['quantity-section','discount-section','price-summary','payment-section'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -585,7 +587,7 @@ function backToDate() {
   state.selectedTypeId = null;
   state.qty = 1;
   document.querySelectorAll('.date-card').forEach(el => el.classList.remove('selected'));
-  ['slot-section','type-section','quantity-section','price-summary','payment-section'].forEach(id => {
+  ['slot-section','type-section','quantity-section','discount-section','price-summary','payment-section'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -598,7 +600,7 @@ function backToSlot() {
   state.selectedTypeId = null;
   state.qty = 1;
   document.querySelectorAll('.slot-btn').forEach(el => el.classList.remove('selected'));
-  ['type-section','quantity-section','price-summary','payment-section'].forEach(id => {
+  ['type-section','quantity-section','discount-section','price-summary','payment-section'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -611,7 +613,7 @@ function backToType() {
   state.selectedTypeId = null;
   state.qty = 1;
   document.querySelectorAll('.ticket-type-card').forEach(el => el.classList.remove('selected'));
-  ['quantity-section','price-summary','payment-section'].forEach(id => {
+  ['quantity-section','discount-section','price-summary','payment-section'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -678,6 +680,7 @@ function showQuantitySection() {
   }
 
   animateIn('quantity-section');
+  animateIn('discount-section');
   animateIn('price-summary');
   animateIn('payment-section');
   document.getElementById('btn-to-info').style.display = 'flex';
@@ -690,6 +693,62 @@ function animateIn(id) {
   el.style.animation = 'none';
   void el.offsetWidth;
   el.style.animation = '';
+}
+
+// ─── PROMO CODE ───────────────────────────────────────────────────────────
+const PROMO_CODES = {
+  'NMC300': {
+    code: 'NMC300',
+    discount: 300,
+    label: 'ส่วนลด 300 บาท'
+  }
+};
+
+function applyPromoCode() {
+  const input = document.getElementById('promo-input');
+  const msgEl = document.getElementById('promo-msg');
+  if (!input || !msgEl) return;
+
+  const rawCode = input.value.trim().toUpperCase();
+  if (!rawCode) {
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#f87171';
+    msgEl.textContent = 'กรุณากรอกโค้ดส่วนลด';
+    return;
+  }
+
+  const promo = PROMO_CODES[rawCode];
+  if (promo) {
+    state.promoCode = promo.code;
+    state.discountAmount = promo.discount;
+    input.value = promo.code;
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#4ade80';
+    msgEl.innerHTML = `✅ ใช้โค้ด <strong>${promo.code}</strong> สำเร็จ ลด ${fmt(promo.discount)} บาท <button type="button" onclick="removePromoCode()" style="margin-left:8px;background:none;border:none;color:#fca5a5;cursor:pointer;text-decoration:underline;font-size:0.8rem;">ยกเลิก</button>`;
+    updateSummary();
+    showToast(`🎉 ใช้โค้ด ${promo.code} ลดทันที ${fmt(promo.discount)} บาท`, 'success');
+  } else {
+    state.promoCode = null;
+    state.discountAmount = 0;
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#f87171';
+    msgEl.textContent = '❌ โค้ดส่วนลดไม่ถูกต้อง หรือหมดอายุแล้ว';
+    updateSummary();
+  }
+}
+
+function removePromoCode() {
+  state.promoCode = null;
+  state.discountAmount = 0;
+  const input = document.getElementById('promo-input');
+  const msgEl = document.getElementById('promo-msg');
+  if (input) input.value = '';
+  if (msgEl) {
+    msgEl.style.display = 'none';
+    msgEl.textContent = '';
+  }
+  updateSummary();
+  showToast('ยกเลิกการใช้โค้ดส่วนลดแล้ว', 'info');
 }
 
 // ─── QUANTITY ─────────────────────────────────────────────────────────────
@@ -708,7 +767,10 @@ function changeQty(delta) {
 function updateSummary() {
   const type = getActiveTicketType(state.selectedTypeId);
   if (!type) return;
-  const total   = type.price * state.qty;
+  const subtotal = type.price * state.qty;
+  const discount = state.discountAmount || 0;
+  const netTotal = Math.max(0, subtotal - discount);
+
   const dateObj = CONFIG.schedule.find(d => d.id === state.selectedDateId);
   const showLabel = dateObj ? `${dateObj.dateLabel} · ${state.selectedSlot} น.` : '—';
   const showEl = document.getElementById('sum-show');
@@ -716,7 +778,20 @@ function updateSummary() {
   document.getElementById('sum-type').textContent  = type.name;
   document.getElementById('sum-price').textContent = `${fmt(type.price)} บาท`;
   document.getElementById('sum-qty').textContent   = `${state.qty} ใบ`;
-  document.getElementById('sum-total').textContent = `${fmt(total)} บาท`;
+
+  const discountRow = document.getElementById('sum-discount-row');
+  const discountLabel = document.getElementById('sum-discount-label');
+  const discountVal = document.getElementById('sum-discount');
+
+  if (discount > 0 && discountRow) {
+    discountRow.style.display = 'flex';
+    if (discountLabel) discountLabel.textContent = `ส่วนลดโค้ด (${state.promoCode})`;
+    if (discountVal) discountVal.textContent = `-${fmt(discount)} บาท`;
+  } else if (discountRow) {
+    discountRow.style.display = 'none';
+  }
+
+  document.getElementById('sum-total').textContent = `${fmt(netTotal)} บาท`;
 }
 
 // ─── QR CODE HELPER ───────────────────────────────────────────────────────
@@ -761,9 +836,23 @@ function renderPaymentQR() {
 function renderRecap() {
   const type = getActiveTicketType(state.selectedTypeId);
   if (!type) return;
+  const subtotal = type.price * state.qty;
+  const discount = state.discountAmount || 0;
+  const netTotal = Math.max(0, subtotal - discount);
+
   document.getElementById('recap-type').textContent  = type.name;
   document.getElementById('recap-qty').textContent   = `${state.qty} ใบ`;
-  document.getElementById('recap-total').textContent = `${fmt(type.price * state.qty)} บาท`;
+  document.getElementById('recap-total').textContent = `${fmt(netTotal)} บาท`;
+
+  const recapDiscountBadge = document.getElementById('recap-discount-badge');
+  if (recapDiscountBadge) {
+    if (discount > 0) {
+      recapDiscountBadge.style.display = 'block';
+      recapDiscountBadge.textContent = `🏷️ ใช้โค้ด ${state.promoCode} ลด ${fmt(discount)} บาท`;
+    } else {
+      recapDiscountBadge.style.display = 'none';
+    }
+  }
 }
 
 // ─── SUBMIT ORDER ─────────────────────────────────────────────────────────
@@ -774,7 +863,7 @@ async function submitOrder(event) {
   const nickname = (document.getElementById('f-nickname')?.value || '').trim();
   const phone    = cleanThaiPhone(document.getElementById('f-phone').value.trim());
   const email    = document.getElementById('f-email').value.trim();
-  const note     = document.getElementById('f-note').value.trim();
+  const baseNote = document.getElementById('f-note').value.trim();
   const type     = getActiveTicketType(state.selectedTypeId);
 
   if (!type)              return showToast('❌ กรุณาเลือกประเภทบัตร', 'error');
@@ -799,6 +888,17 @@ async function submitOrder(event) {
   const showDateLabel = dateObj ? `${dateObj.dateLabel} · ${state.selectedSlot} น.` : '—';
   const tickets    = [];
 
+  const subtotal = type.price * state.qty;
+  const discount = state.discountAmount || 0;
+  const netTotal = Math.max(0, subtotal - discount);
+
+  // Append promo code note so it's always visible in Google Sheets note column even without schema change
+  let fullNote = baseNote;
+  if (discount > 0 && state.promoCode) {
+    const promoNote = `[โค้ด: ${state.promoCode} ลด ${fmt(discount)}.-]`;
+    fullNote = fullNote ? `${fullNote} ${promoNote}` : promoNote;
+  }
+
   for (let i = 1; i <= state.qty; i++) {
     tickets.push({
       ticketId:  `${orderId}-T${String(i).padStart(2,'0')}`,
@@ -808,7 +908,7 @@ async function submitOrder(event) {
       nickname,
       phone,
       email,
-      note,
+      note:        fullNote,
       type:        type.name,
       typeId:      type.id,
       show:        CONFIG.showName,
@@ -817,6 +917,10 @@ async function submitOrder(event) {
       showSlot:    state.selectedSlot,
       showDate:    showDateLabel,
       pricePerTicket: type.price,
+      subtotal,
+      discount,
+      promoCode:   state.promoCode || null,
+      total:       netTotal,
     });
   }
 
@@ -826,13 +930,16 @@ async function submitOrder(event) {
     nickname,
     phone,
     email,
-    note,
+    note:           fullNote,
     slipImage:      state.slipBase64,
     typeId:         type.id,
     typeName:       type.name,
     pricePerTicket: type.price,
     qty:            state.qty,
-    total:          type.price * state.qty,
+    subtotal:       subtotal,
+    discount:       discount,
+    promoCode:      state.promoCode || null,
+    total:          netTotal,
     showDateId:     state.selectedDateId,
     showSlot:       state.selectedSlot,
     showDate:       showDateLabel,
@@ -864,6 +971,9 @@ async function submitOrder(event) {
           ticketType:     order.typeName,
           qty:            order.qty,
           pricePerTicket: order.pricePerTicket,
+          subtotal:       order.subtotal,
+          discount:       order.discount || 0,
+          promoCode:      order.promoCode || '',
           total:          order.total,
           showDate:       order.showDate,
           note:           order.note   || '—',
@@ -932,6 +1042,16 @@ function renderConfirmation() {
   document.getElementById('conf-show').textContent     = o.showDate || '—';
   document.getElementById('conf-type').textContent     = o.typeName;
   document.getElementById('conf-qty').textContent      = `${o.qty} ใบ`;
+
+  const confDiscountRow = document.getElementById('conf-discount-row');
+  const confDiscountVal = document.getElementById('conf-discount');
+  if (o.discount > 0 && confDiscountRow) {
+    confDiscountRow.style.display = 'flex';
+    if (confDiscountVal) confDiscountVal.textContent = `-${fmt(o.discount)} บาท`;
+  } else if (confDiscountRow) {
+    confDiscountRow.style.display = 'none';
+  }
+
   document.getElementById('conf-total').textContent    = `${fmt(o.total)} บาท`;
 
   // Update the status check link with orderId so customers land directly on their order
@@ -1201,6 +1321,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('qty-minus').disabled = true;
+
+  const promoInput = document.getElementById('promo-input');
+  if (promoInput) {
+    promoInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyPromoCode();
+      }
+    });
+  }
 
   window.addEventListener('scroll', () => {
     const header = document.querySelector('.site-header');

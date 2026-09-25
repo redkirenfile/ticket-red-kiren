@@ -564,9 +564,11 @@ async function doSearch() {
     if (!orderTickets.length) return;
     const rep = orderTickets[0];
 
-    const totalAmt = rep.pricePerTicket
-      ? rep.pricePerTicket * orderTickets.length
-      : (order?.total || 0);
+    const discountAmt = (order?.discount != null) ? order.discount : (rep.discount || 0);
+    const promoCodeVal = order?.promoCode || rep.promoCode || '';
+    const totalAmt = (order?.total != null)
+      ? order.total
+      : (rep.pricePerTicket ? Math.max(0, rep.pricePerTicket * orderTickets.length - discountAmt) : (rep.total || 0));
 
     const tsLabel = order?.timestamp
       ? new Date(order.timestamp).toLocaleDateString('th-TH', {
@@ -657,7 +659,10 @@ async function doSearch() {
             </div>
             <div class="order-info-item">
               <div class="oi-label">ราคารวม</div>
-              <div class="oi-val">${totalAmt ? totalAmt.toLocaleString('th-TH') + ' บาท' : '—'}</div>
+              <div class="oi-val">
+                ${totalAmt != null ? totalAmt.toLocaleString('th-TH') + ' บาท' : '—'}
+                ${discountAmt > 0 ? `<div style="font-size:0.75rem; color:#4ade80; font-weight:600; margin-top:2px;">(ลด ${discountAmt.toLocaleString('th-TH')} บาท ${promoCodeVal ? 'โค้ด ' + esc(promoCodeVal) : ''})</div>` : ''}
+              </div>
             </div>
             <div class="order-info-item" style="grid-column: 1 / -1;">
               <div class="oi-label">รอบแสดง</div>

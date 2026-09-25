@@ -772,6 +772,16 @@ function handleNewOrder(data) {
   assignOrderCol(['ประเภทบัตร', 'tickettype', 'type'], data.ticketType);
   assignOrderCol(['จำนวนใบ', 'qty'], data.qty);
   assignOrderCol(['ราคาต่อใบ', 'price'], data.pricePerTicket);
+
+  let subtotalIdx = findColIndex(oHeaders, ['ราคาก่อนลด', 'ยอดรวมก่อนลด', 'subtotal']);
+  if (subtotalIdx >= 0) rowData[subtotalIdx] = data.subtotal || data.total;
+
+  let discIdx = findColIndex(oHeaders, ['ส่วนลด', 'discount']);
+  if (discIdx >= 0) rowData[discIdx] = data.discount || 0;
+
+  let promoIdx = findColIndex(oHeaders, ['โค้ดส่วนลด', 'promocode', 'promo code', 'promo']);
+  if (promoIdx >= 0) rowData[promoIdx] = data.promoCode || '—';
+
   assignOrderCol(['ราคารวม', 'total'], data.total);
   assignOrderCol(['รอบการแสดง', 'showdate'], data.showDate || '—');
   assignOrderCol(['หมายเหตุ', 'note'], data.note || '—');

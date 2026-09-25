@@ -796,6 +796,7 @@
         <div class="detail-row"><span class="dr-label">รอบการแสดง</span><span class="dr-val" id="dv-showdate">—</span></div>
         <div class="detail-row"><span class="dr-label">ประเภทบัตร</span><span class="dr-val" id="dv-type">—</span></div>
         <div class="detail-row"><span class="dr-label">จำนวน</span><span class="dr-val" id="dv-qty">—</span></div>
+        <div class="detail-row" id="dv-discount-row" style="display:none; color:#4ade80;"><span class="dr-label" style="color:#4ade80;">ส่วนลดโค้ด</span><span class="dr-val" id="dv-discount" style="color:#4ade80; font-weight:600;">—</span></div>
         <div class="detail-row"><span class="dr-label">ราคารวม</span><span class="dr-val" id="dv-total">—</span></div>
         <div class="detail-row" id="dv-note-row" style="display:none"><span class="dr-label">หมายเหตุ</span><span class="dr-val" id="dv-note">—</span></div>
         <div class="detail-row"><span class="dr-label">วันที่จอง</span><span class="dr-val" id="dv-timestamp">—</span></div>
@@ -1675,8 +1676,25 @@ function openDetailModal(ticketId) {
   document.getElementById('dv-type').textContent      = rep.type  || '—';
   document.getElementById('dv-qty').textContent       = orderTickets.length + ' ใบ';
 
-  const total = rep.pricePerTicket ? rep.pricePerTicket * orderTickets.length : (rep.total || 0);
-  document.getElementById('dv-total').textContent = total
+  const allOrders = JSON.parse(localStorage.getItem('theater_orders') || '[]');
+  const order     = allOrders.find(o => o.orderId === orderId);
+
+  const discount = (order?.discount != null) ? order.discount : (rep.discount || 0);
+  const promoCode = order?.promoCode || rep.promoCode || '';
+  const total = (order?.total != null)
+    ? order.total
+    : (rep.pricePerTicket ? Math.max(0, rep.pricePerTicket * orderTickets.length - discount) : (rep.total || 0));
+
+  const dvDiscountRow = document.getElementById('dv-discount-row');
+  const dvDiscountVal = document.getElementById('dv-discount');
+  if (discount > 0 && dvDiscountRow) {
+    dvDiscountRow.style.display = 'flex';
+    if (dvDiscountVal) dvDiscountVal.textContent = `-${discount.toLocaleString('th-TH')} บาท ${promoCode ? '(' + promoCode + ')' : ''}`;
+  } else if (dvDiscountRow) {
+    dvDiscountRow.style.display = 'none';
+  }
+
+  document.getElementById('dv-total').textContent = total != null
     ? total.toLocaleString('th-TH') + ' บาท' : '—';
 
   if (rep.note) {
