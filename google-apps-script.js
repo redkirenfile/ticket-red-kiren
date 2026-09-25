@@ -245,7 +245,7 @@ function doPost(e) {
         const oHeaders = oData[0] || [];
         const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
         const idxOQty = findColIndex(oHeaders, ['จำนวนใบ', 'จำนวนบัตร (ใบ)', 'จำนวนบัตร', 'จำนวน', 'qty']);
-        const idxOTotal = findColIndex(oHeaders, ['ราคารวม', 'ยอดเงินรวม (บาท)', 'ยอดรวม', 'total', 'amount']);
+        const idxOTotal = findColIndex(oHeaders, ['ราคารวม', 'ยอดเงินรวม (บาท)', 'ยอดรวม', 'ยอดบัตรรวม', 'ยอดเงินรวม', 'ยอดชำระ', 'ราคาสุทธิ', 'ยอดสุทธิ', 'total', 'totalprice', 'amount']);
         const idxOPrice = findColIndex(oHeaders, ['ราคาต่อใบ', 'ราคาต่อใบ (บาท)', 'ราคา', 'priceperticket', 'price']);
         const idxOTkts = findColIndex(oHeaders, ['รหัสบัตรทั้งหมด', 'รหัสตั๋วทั้งหมด', 'ticketids', 'tickets']);
 
@@ -324,27 +324,27 @@ function doPost(e) {
       // อัปเดตใน Orders sheet
       const oData = ordersSheet.getDataRange().getValues();
       const oHeaders = oData[0] || [];
-      const idxOId = oHeaders.indexOf('เลขที่คำสั่งซื้อ') + 1;
-      const idxOName = oHeaders.indexOf('ชื่อ-นามสกุล') + 1;
-      const idxOPhone = oHeaders.indexOf('เบอร์โทร') + 1;
-      const idxOEmail = oHeaders.indexOf('อีเมล') + 1;
-      const idxOType = oHeaders.indexOf('ประเภทบัตร') + 1;
-      const idxOPrice = oHeaders.indexOf('ราคาต่อใบ') + 1;
-      const idxOTotal = oHeaders.indexOf('ราคารวม') + 1;
-      const idxONote = oHeaders.indexOf('หมายเหตุ') + 1;
-      const idxOShowDate = getColumnIndex(ordersSheet, 'รอบการแสดง');
+      const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']) + 1;
+      const idxOName = findColIndex(oHeaders, ['ชื่อ-นามสกุล', 'name', 'fullname']) + 1;
+      const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'phone', 'tel']) + 1;
+      const idxOEmail = findColIndex(oHeaders, ['อีเมล', 'email']) + 1;
+      const idxOType = findColIndex(oHeaders, ['ประเภทบัตร', 'tickettype', 'type']) + 1;
+      const idxOPrice = findColIndex(oHeaders, ['ราคาต่อใบ', 'price', 'priceperticket']) + 1;
+      const idxOTotal = findColIndex(oHeaders, ['ราคารวม', 'ยอดเงินรวม (บาท)', 'ยอดรวม', 'ยอดบัตรรวม', 'ยอดเงินรวม', 'ยอดชำระ', 'ราคาสุทธิ', 'ยอดสุทธิ', 'total', 'totalprice', 'amount']) + 1;
+      const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note', 'remark']) + 1;
+      const idxOShowDate = findColIndex(oHeaders, ['รอบการแสดง', 'showdate', 'round']) + 1;
 
       for (let i = 1; i < oData.length; i++) {
-        if (oData[i][idxOId - 1] === orderId) {
+        if (idxOId > 0 && oData[i][idxOId - 1] === orderId) {
           const rowNum = i + 1;
-          ordersSheet.getRange(rowNum, idxOName).setValue(data.name);
-          ordersSheet.getRange(rowNum, idxOPhone).setValue(cleanPhoneVal);
-          if (idxOEmail) ordersSheet.getRange(rowNum, idxOEmail).setValue(data.email || '');
-          ordersSheet.getRange(rowNum, idxOType).setValue(data.type);
-          if (idxOPrice) ordersSheet.getRange(rowNum, idxOPrice).setValue(data.pricePerTicket);
-          if (idxOTotal) ordersSheet.getRange(rowNum, idxOTotal).setValue(data.total);
-          if (idxONote) ordersSheet.getRange(rowNum, idxONote).setValue(data.note || '');
-          if (idxOShowDate) ordersSheet.getRange(rowNum, idxOShowDate).setValue(data.showDate || '');
+          if (idxOName > 0) ordersSheet.getRange(rowNum, idxOName).setValue(data.name);
+          if (idxOPhone > 0) ordersSheet.getRange(rowNum, idxOPhone).setValue(cleanPhoneVal);
+          if (idxOEmail > 0) ordersSheet.getRange(rowNum, idxOEmail).setValue(data.email || '');
+          if (idxOType > 0) ordersSheet.getRange(rowNum, idxOType).setValue(data.type);
+          if (idxOPrice > 0) ordersSheet.getRange(rowNum, idxOPrice).setValue(data.pricePerTicket);
+          if (idxOTotal > 0) ordersSheet.getRange(rowNum, idxOTotal).setValue(data.total);
+          if (idxONote > 0) ordersSheet.getRange(rowNum, idxONote).setValue(data.note || '');
+          if (idxOShowDate > 0) ordersSheet.getRange(rowNum, idxOShowDate).setValue(data.showDate || '');
           break;
         }
       }
@@ -352,19 +352,19 @@ function doPost(e) {
       // อัปเดตใน Tickets sheet ทุกใบของออร์เดอร์นี้
       const tData = ticketsSheet.getDataRange().getValues();
       const tHeaders = tData[0] || [];
-      const idxTOId = tHeaders.indexOf('เลขที่คำสั่งซื้อ') + 1;
-      const idxTName = tHeaders.indexOf('ชื่อ-นามสกุล') + 1;
-      const idxTPhone = tHeaders.indexOf('เบอร์โทร') + 1;
-      const idxTType = tHeaders.indexOf('ประเภทบัตร') + 1;
-      const idxTShowDate = getColumnIndex(ticketsSheet, 'รอบการแสดง');
+      const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']) + 1;
+      const idxTName = findColIndex(tHeaders, ['ชื่อ-นามสกุล', 'name']) + 1;
+      const idxTPhone = findColIndex(tHeaders, ['เบอร์โทร', 'phone', 'tel']) + 1;
+      const idxTType = findColIndex(tHeaders, ['ประเภทบัตร', 'type']) + 1;
+      const idxTShowDate = findColIndex(tHeaders, ['รอบการแสดง', 'showdate']) + 1;
 
       for (let i = 1; i < tData.length; i++) {
-        if (tData[i][idxTOId - 1] === orderId) {
+        if (idxTOId > 0 && tData[i][idxTOId - 1] === orderId) {
           const rowNum = i + 1;
-          ticketsSheet.getRange(rowNum, idxTName).setValue(data.name);
-          ticketsSheet.getRange(rowNum, idxTPhone).setValue(cleanPhoneVal);
-          ticketsSheet.getRange(rowNum, idxTType).setValue(data.type);
-          if (idxTShowDate) ticketsSheet.getRange(rowNum, idxTShowDate).setValue(data.showDate || '');
+          if (idxTName > 0) ticketsSheet.getRange(rowNum, idxTName).setValue(data.name);
+          if (idxTPhone > 0) ticketsSheet.getRange(rowNum, idxTPhone).setValue(cleanPhoneVal);
+          if (idxTType > 0) ticketsSheet.getRange(rowNum, idxTType).setValue(data.type);
+          if (idxTShowDate > 0) ticketsSheet.getRange(rowNum, idxTShowDate).setValue(data.showDate || '');
         }
       }
 
@@ -390,6 +390,14 @@ function doGet(e) {
   try {
     const action = e.parameter.action;
     const ss = getSS();
+
+    // 0. ตรวจสอบและเติมยอดบัตรรวม (TotalPrice) ให้อัตโนมัติหากมีแถวที่ว่างอยู่
+    backfillOrderTotals(ss);
+
+    if (action === 'fixTotals' || action === 'backfillTotals') {
+      const fixedCount = backfillOrderTotals(ss);
+      return output({ success: true, message: `อัปเดตยอดบัตรรวมเรียบร้อยแล้ว (${fixedCount} รายการ)` });
+    }
 
     // 1. ดึงเฉพาะการตั้งค่าส่วนกลาง (เช่น เช็คสถานะ Early Bird ในหน้าจองลูกค้า + ยอดจองกลางเพื่อคำนวณที่นั่งเหลือ)
     if (action === 'getSettings') {
@@ -464,9 +472,9 @@ function doGet(e) {
       const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'เบอร์โทรศัพท์', 'เบอร์', 'phone', 'tel']) + 1;
       const idxOEmail = findColIndex(oHeaders, ['อีเมล', 'email']) + 1;
       const idxOType = findColIndex(oHeaders, ['ประเภทบัตร', 'ประเภท', 'tickettype', 'type']) + 1;
-      const idxOQty = findColIndex(oHeaders, ['จำนวนใบ', 'จำนวน', 'qty', 'quantity']) + 1;
+      const idxOQty = findColIndex(oHeaders, ['จำนวนใบ', 'จำนวน', 'qty', 'quantity', 'ยอดบัตรรวม (ใบ)', 'ยอดบัตรรวม']) + 1;
       const idxOPrice = findColIndex(oHeaders, ['ราคาต่อใบ', 'ราคา', 'priceperticket', 'price']) + 1;
-      const idxOTotal = findColIndex(oHeaders, ['ราคารวม', 'ยอดรวม', 'total', 'amount']) + 1;
+      const idxOTotal = findColIndex(oHeaders, ['ราคารวม', 'ยอดรวม', 'total', 'amount', 'totalprice', 'ยอดเงินรวม', 'ยอดบัตรรวม', 'ยอดชำระ', 'ยอดสุทธิ', 'ราคาสุทธิ']) + 1;
       const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note']) + 1;
       const idxOTickets = findColIndex(oHeaders, ['รหัสบัตรทั้งหมด', 'รหัสบัตร', 'ticketids', 'tickets']) + 1;
       const idxOSlip = findColIndex(oHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'slipurl', 'slip url', 'slip_url', 'slip', 'sliplink']) + 1;
@@ -655,9 +663,9 @@ function doGet(e) {
       const idxOName = findColIndex(oHeaders, ['ชื่อ-นามสกุล', 'ชื่อนามสกุล', 'ชื่อ', 'name', 'fullname']);
       const idxOEmail = findColIndex(oHeaders, ['อีเมล', 'email']);
       const idxOType = findColIndex(oHeaders, ['ประเภทบัตร', 'ประเภท', 'tickettype', 'type']);
-      const idxOQty = findColIndex(oHeaders, ['จำนวนใบ', 'จำนวนบัตร (ใบ)', 'จำนวนบัตร', 'จำนวน', 'qty']);
+      const idxOQty = findColIndex(oHeaders, ['จำนวนใบ', 'จำนวนบัตร (ใบ)', 'จำนวนบัตร', 'จำนวน', 'qty', 'ยอดบัตรรวม (ใบ)', 'ยอดบัตรรวม']);
       const idxOPrice = findColIndex(oHeaders, ['ราคาต่อใบ (บาท)', 'ราคาต่อใบ', 'ราคา', 'priceperticket', 'price']);
-      const idxOTotal = findColIndex(oHeaders, ['ราคารวม', 'ยอดเงินรวม (บาท)', 'ยอดรวม', 'total', 'amount']);
+      const idxOTotal = findColIndex(oHeaders, ['ราคารวม', 'ยอดเงินรวม (บาท)', 'ยอดรวม', 'total', 'amount', 'totalprice', 'ยอดเงินรวม', 'ยอดบัตรรวม', 'ยอดชำระ', 'ยอดสุทธิ', 'ราคาสุทธิ']);
       const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note']);
       const idxOTickets = findColIndex(oHeaders, ['รหัสบัตรทั้งหมด', 'รหัสตั๋วทั้งหมด', 'ticketids', 'tickets']);
       const idxOSlip = findColIndex(oHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'slipurl', 'slip url', 'slip_url', 'slip', 'sliplink']);
@@ -861,11 +869,11 @@ function handleNewOrder(data) {
   }
   if (nickIdx >= 0) rowData[nickIdx] = data.nickname || '—';
 
-  assignOrderCol(['เบอร์โทร', 'phone', 'tel'], cleanPhoneVal);
+  assignOrderCol(['เบอร์โทร', 'phone', 'tel', 'mobile'], cleanPhoneVal);
   assignOrderCol(['อีเมล', 'email'], data.email || '—');
   assignOrderCol(['ประเภทบัตร', 'tickettype', 'type'], data.ticketType);
-  assignOrderCol(['จำนวนใบ', 'qty'], data.qty);
-  assignOrderCol(['ราคาต่อใบ', 'price'], data.pricePerTicket);
+  assignOrderCol(['จำนวนใบ', 'จำนวนบัตร (ใบ)', 'จำนวนบัตร', 'จำนวนตั๋ว', 'จำนวน', 'ยอดบัตรรวม (ใบ)', 'ยอดบัตรรวม', 'qty', 'quantity', 'ticketcount'], data.qty);
+  assignOrderCol(['ราคาต่อใบ', 'ราคาต่อใบ (บาท)', 'ราคา', 'price', 'priceperticket', 'unitprice'], data.pricePerTicket);
 
   let subtotalIdx = findColIndex(oHeaders, ['ราคาก่อนลด', 'ยอดรวมก่อนลด', 'subtotal']);
   if (subtotalIdx >= 0) rowData[subtotalIdx] = data.subtotal || data.total;
@@ -876,10 +884,20 @@ function handleNewOrder(data) {
   let promoIdx = findColIndex(oHeaders, ['โค้ดส่วนลด', 'promocode', 'promo code', 'promo']);
   if (promoIdx >= 0) rowData[promoIdx] = data.promoCode || '—';
 
-  assignOrderCol(['ราคารวม', 'total'], data.total);
-  assignOrderCol(['รอบการแสดง', 'showdate'], data.showDate || '—');
-  assignOrderCol(['หมายเหตุ', 'note'], data.note || '—');
-  assignOrderCol(['รหัสบัตรทั้งหมด', 'tickets'], data.tickets);
+  const finalTotal = data.total !== undefined ? Number(data.total) : (Number(data.qty || 1) * Number(data.pricePerTicket || 0));
+  let totalIdx = findColIndex(oHeaders, ['ราคารวม', 'ยอดเงินรวม (บาท)', 'ยอดรวม', 'ยอดบัตรรวม', 'ยอดเงินรวม', 'ยอดชำระ', 'ราคาสุทธิ', 'ยอดสุทธิ', 'total', 'totalprice', 'amount', 'totalamount', 'grandtotal']);
+  if (totalIdx < 0) {
+    const newCol = ordersSheet.getLastColumn() + 1;
+    ordersSheet.getRange(1, newCol).setValue('TotalPrice');
+    ordersSheet.getRange(1, newCol).setBackground('#4a2080').setFontColor('#ffffff').setFontWeight('bold');
+    oHeaders.push('TotalPrice');
+    totalIdx = newCol - 1;
+  }
+  rowData[totalIdx] = finalTotal;
+
+  assignOrderCol(['รอบการแสดง', 'showdate', 'รอบ', 'round'], data.showDate || '—');
+  assignOrderCol(['หมายเหตุ', 'note', 'remark'], data.note || '—');
+  assignOrderCol(['รหัสบัตรทั้งหมด', 'tickets', 'ticketids', 'รหัสตั๋ว'], data.tickets);
   
   let slipIdx = findColIndex(oHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'หลักฐานการโอนเงิน', 'ลิงก์สลิป', 'ลิงค์สลิป', 'slipurl', 'slip url', 'slip_url', 'slip', 'sliplink']);
   if (slipIdx < 0) {
@@ -945,6 +963,8 @@ function handleNewOrder(data) {
     assignTCol(['รอบการแสดง', 'showdate'], data.showDate || '—');
     assignTCol(['สถานะเช็คอิน', 'status'], 'ยังไม่เช็คอิน');
     assignTCol(['เวลาเช็คอิน', 'checkintime'], '');
+    assignTCol(['จำนวนบัตรรวม', 'จำนวนใบ', 'จำนวน', 'qty'], data.qty);
+    assignTCol(['ยอดบัตรรวม', 'ยอดรวม', 'ยอดเงินรวม', 'ราคารวม', 'total', 'totalprice', 'amount'], finalTotal);
     tRowData[tSlipIdx] = slipUrl;
 
     for (let i = 0; i < tHeaders.length; i++) {
@@ -1043,4 +1063,72 @@ function readCleanPhone(p) {
     s = '0' + s;
   }
   return s;
+}
+
+// ─── AUTO-BACKFILL / FIX MISSING TOTALS ────────────────────────────────────
+// ฟังก์ชันตรวจสอบและเติมค่า TotalPrice/ยอดรวม ให้ทุกออเดอร์ใน Orders sheet โดยอัตโนมัติ
+function backfillOrderTotals(ss) {
+  let count = 0;
+  try {
+    const ordersSheet = ss.getSheetByName(SHEET_ORDERS);
+    if (!ordersSheet) return 0;
+    const data = ordersSheet.getDataRange().getValues();
+    if (data.length <= 1) return 0;
+    const headers = data[0] || [];
+    
+    let idxTotal = findColIndex(headers, ['totalprice', 'total', 'ราคารวม', 'ยอดรวม', 'ยอดบัตรรวม', 'ยอดเงินรวม', 'ยอดชำระ', 'ราคาสุทธิ', 'ยอดสุทธิ', 'amount']);
+    const idxQty = findColIndex(headers, ['qty', 'จำนวนใบ', 'จำนวนบัตร', 'จำนวน', 'ยอดบัตรรวม']);
+    const idxPrice = findColIndex(headers, ['price', 'priceperticket', 'ราคาต่อใบ', 'ราคา']);
+    const idxType = findColIndex(headers, ['tickettype', 'type', 'ประเภทบัตร', 'ประเภท']);
+    const idxNote = findColIndex(headers, ['note', 'หมายเหตุ', 'remark']);
+
+    if (idxTotal < 0) {
+      // หากยังไม่มีคอลัมน์ TotalPrice ให้สร้างขึ้นมาอัตโนมัติ
+      const newCol = ordersSheet.getLastColumn() + 1;
+      ordersSheet.getRange(1, newCol).setValue('TotalPrice');
+      ordersSheet.getRange(1, newCol).setBackground('#4a2080').setFontColor('#ffffff').setFontWeight('bold');
+      idxTotal = newCol - 1;
+    }
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const currentVal = row[idxTotal];
+      // เติมเฉพาะแถวที่ยังว่างอยู่
+      if (currentVal === '' || currentVal === null || currentVal === undefined) {
+        const qty = idxQty >= 0 ? Number(row[idxQty]) || 1 : 1;
+        let price = idxPrice >= 0 ? Number(row[idxPrice]) || 0 : 0;
+        
+        const typeStr = idxType >= 0 ? String(row[idxType] || '').toUpperCase() : '';
+        const isQuota = typeStr.includes('โควต้า') || typeStr.includes('STAFF') || typeStr.includes('QUOTA');
+        
+        if (price <= 0 && !isQuota) {
+          if (typeStr.includes('EARLY')) price = 500;
+          else if (typeStr.includes('STUDENT')) price = 550;
+          else if (typeStr.includes('REGULAR')) price = 900;
+        }
+
+        let calculatedTotal = isQuota ? 0 : qty * price;
+        // ตรวจสอบส่วนลดเพิ่มเติมจากหมายเหตุ (เช่น NMC300)
+        if (idxNote >= 0) {
+          const noteStr = String(row[idxNote] || '');
+          if (noteStr.includes('ลด 300') || noteStr.includes('NMC300')) {
+            calculatedTotal = Math.max(0, calculatedTotal - 300);
+          }
+        }
+
+        ordersSheet.getRange(i + 1, idxTotal + 1).setValue(calculatedTotal);
+        count++;
+      }
+    }
+  } catch (err) {
+    console.warn('backfillOrderTotals error:', err);
+  }
+  return count;
+}
+
+// ฟังก์ชันสำหรับกดรันใน Google Apps Script Editor โดยตรง เพื่อเติมยอดรวมของทุกออเดอร์ในอดีตทันที
+function fixOrderTotals() {
+  const ss = getSS();
+  const count = backfillOrderTotals(ss);
+  Logger.log(`อัปเดตยอดเงินรวมเรียบร้อยแล้วทั้งหมด ${count} แถว`);
 }
