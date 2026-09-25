@@ -882,10 +882,10 @@ async function submitOrder(event) {
   const discount = state.discountAmount || 0;
   const netTotal = Math.max(0, subtotal - discount);
 
-  // Append promo code note so it's always visible in Google Sheets note column even without schema change
+  // Remark when promo code is used so it clearly stands out in Google Sheets หมายเหตุ
   let fullNote = baseNote;
   if (discount > 0 && state.promoCode) {
-    const promoNote = `[โค้ด: ${state.promoCode} ลด ${fmt(discount)}.-]`;
+    const promoNote = `[ใช้โค้ดส่วนลด: ${state.promoCode} ลด ${fmt(discount)} บาท | ยอดเดิม ${fmt(subtotal)} บาท สุทธิ ${fmt(netTotal)} บาท]`;
     fullNote = fullNote ? `${fullNote} ${promoNote}` : promoNote;
   }
 
