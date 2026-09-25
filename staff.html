@@ -1705,8 +1705,6 @@ function openDetailModal(ticketId) {
   }
 
   // timestamp from orderId or fallback
-  const allOrders = JSON.parse(localStorage.getItem('theater_orders') || '[]');
-  const order     = allOrders.find(o => o.orderId === orderId);
   document.getElementById('dv-timestamp').textContent = order?.timestamp
     ? new Date(order.timestamp).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}) : '—';
 
