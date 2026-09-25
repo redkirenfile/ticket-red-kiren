@@ -518,10 +518,6 @@ function renderTicketTypes() {
       `;
     }
 
-    const quotaBadge = (isEb && state.selectedDateId && state.selectedSlot)
-      ? `<span style="display:inline-block;margin-top:6px;font-size:0.75rem;color:#f59e0b;background:rgba(245,158,11,0.12);padding:2px 8px;border-radius:4px;border:1px solid rgba(245,158,11,0.3)">⚡ โควต้ารอบนี้เหลือ ${ebRemaining}/50 ใบ</span>`
-      : '';
-
     return `
       <div class="ticket-type-card ${state.selectedTypeId === t.id ? 'selected' : ''}"
            id="tc-${t.id}"
@@ -530,7 +526,6 @@ function renderTicketTypes() {
           <div class="ticket-type-name">${t.name}</div>
           ${t.desc ? `<div class="ticket-type-desc">${t.desc}</div>` : ''}
           ${t.badgeText ? `<span class="ticket-type-badge badge-${t.badge}">${t.badgeText}</span>` : ''}
-          ${quotaBadge}
         </div>
         <div style="display:flex;align-items:center;gap:16px">
           <div class="ticket-type-price">${fmt(t.price)}<span> บาท</span></div>
@@ -671,12 +666,7 @@ function showQuantitySection() {
 
   const limitEl = document.getElementById('qty-limit-text');
   if (limitEl) {
-    if (state.selectedTypeId === 'earlybird' && state.selectedDateId && state.selectedSlot) {
-      const ebRem = getEarlybirdRemainingSeats(state.selectedDateId, state.selectedSlot);
-      limitEl.textContent = `Early Bird สูงสุด ${maxBuy} ใบต่อครั้ง (โควต้ารอบนี้เหลือ ${ebRem} ใบ)`;
-    } else {
-      limitEl.textContent = `สูงสุด ${maxBuy} ใบต่อครั้ง`;
-    }
+    limitEl.textContent = `สูงสุด ${maxBuy} ใบต่อครั้ง`;
   }
 
   animateIn('quantity-section');
