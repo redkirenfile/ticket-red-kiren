@@ -460,7 +460,9 @@ function doGet(e) {
       const tickets = {};
       
       const ordersSheet = getOrCreateSheet(ss, SHEET_ORDERS, []);
-      const oData = ordersSheet.getDataRange().getValues();
+      const oRange = ordersSheet.getDataRange();
+      const oData = oRange.getValues();
+      const oFormulas = oRange.getFormulas();
       const orders = [];
 
       // ค้นหาตำแหน่งคอลัมน์ของชีทคำสั่งซื้อ (Orders)
@@ -481,6 +483,9 @@ function doGet(e) {
       const idxOShowDate = findColIndex(oHeaders, ['รอบการแสดง', 'รอบ', 'showdate', 'round']) + 1;
 
       // ค้นหาตำแหน่งคอลัมน์ของชีทตั๋วรายใบ (Tickets)
+      const tRange = ticketsSheet.getDataRange();
+      const tData = tRange.getValues();
+      const tFormulas = tRange.getFormulas();
       const tHeaders = tData[0] || [];
       const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']) + 1;
       const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']) + 1;
@@ -498,7 +503,12 @@ function doGet(e) {
       for (let i = 1; i < oData.length; i++) {
         const row = oData[i];
         if (!row[idxOId - 1]) continue;
-        const slipVal = (idxOSlip ? row[idxOSlip - 1] : '') || '';
+        let slipVal = (idxOSlip ? row[idxOSlip - 1] : '') || '';
+        const fVal = (idxOSlip && oFormulas[i]) ? oFormulas[i][idxOSlip - 1] : '';
+        if (fVal && String(fVal).indexOf('http') >= 0) {
+          const m = String(fVal).match(/https?:\/\/[^"',)]+/);
+          if (m) slipVal = m[0];
+        }
         const order = {
           orderId: row[idxOId - 1],
           timestamp: row[idxOTs - 1],
@@ -537,7 +547,12 @@ function doGet(e) {
         const match = tId.match(/-T(\d+)$/);
         if (match) ticketNum = Number(match[1]);
 
-        const tSlip = (idxTSlip ? row[idxTSlip - 1] : '') || parentOrder.slipUrl || parentOrder.slipImage || '';
+        let tSlip = (idxTSlip ? row[idxTSlip - 1] : '') || parentOrder.slipUrl || parentOrder.slipImage || '';
+        const tfVal = (idxTSlip && tFormulas[i]) ? tFormulas[i][idxTSlip - 1] : '';
+        if (tfVal && String(tfVal).indexOf('http') >= 0) {
+          const m = String(tfVal).match(/https?:\/\/[^"',)]+/);
+          if (m) tSlip = m[0];
+        }
 
         tickets[tId] = {
           ticketId: tId,
@@ -585,13 +600,17 @@ function doGet(e) {
       const type = e.parameter.type; // 'phone' หรือ 'order'
       
       const ordersSheet = getOrCreateSheet(ss, SHEET_ORDERS, []);
-      const oData = ordersSheet.getDataRange().getValues();
+      const oRange = ordersSheet.getDataRange();
+      const oData = oRange.getValues();
+      const oFormulas = oRange.getFormulas();
       const oHeaders = oData[0] || [];
       const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'เลขที่ออเดอร์', 'เลขออเดอร์', 'orderid', 'order id']);
       const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'เบอร์โทรศัพท์', 'เบอร์', 'phone', 'tel', 'telephone', 'mobile']);
 
       const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
-      const tData = ticketsSheet.getDataRange().getValues();
+      const tRange = ticketsSheet.getDataRange();
+      const tData = tRange.getValues();
+      const tFormulas = tRange.getFormulas();
       const tHeaders = tData[0] || [];
       const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']);
       const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
@@ -675,8 +694,12 @@ function doGet(e) {
       for (let i = 1; i < oData.length; i++) {
         const row = oData[i];
         const oId = idxOId >= 0 ? row[idxOId] : '';
-        if (oId && matchedOrderIds.indexOf(oId) >= 0) {
-          const slipVal = (idxOSlip >= 0 ? row[idxOSlip] : '') || '';
+          let slipVal = (idxOSlip >= 0 ? row[idxOSlip] : '') || '';
+          const fVal = (idxOSlip >= 0 && oFormulas[i]) ? oFormulas[i][idxOSlip] : '';
+          if (fVal && String(fVal).indexOf('http') >= 0) {
+            const m = String(fVal).match(/https?:\/\/[^"',)]+/);
+            if (m) slipVal = m[0];
+          }
           const order = {
             orderId: oId,
             timestamp: idxOTs >= 0 ? row[idxOTs] : '',
@@ -716,7 +739,12 @@ function doGet(e) {
           const match = String(tId).match(/-T(\d+)$/);
           if (match) ticketNum = Number(match[1]);
 
-          const tSlip = (idxTSlip >= 0 ? row[idxTSlip] : '') || parentOrder.slipUrl || parentOrder.slipImage || '';
+          let tSlip = (idxTSlip >= 0 ? row[idxTSlip] : '') || parentOrder.slipUrl || parentOrder.slipImage || '';
+          const tfVal = (idxTSlip >= 0 && tFormulas[i]) ? tFormulas[i][idxTSlip] : '';
+          if (tfVal && String(tfVal).indexOf('http') >= 0) {
+            const m = String(tfVal).match(/https?:\/\/[^"',)]+/);
+            if (m) tSlip = m[0];
+          }
 
           tickets[tId] = {
             ticketId: tId,
@@ -907,7 +935,10 @@ function handleNewOrder(data) {
     oHeaders.push('สลิปการโอนเงิน');
     slipIdx = newCol - 1;
   }
-  rowData[slipIdx] = slipUrl;
+  const slipDisplay = (slipUrl && String(slipUrl).startsWith('http'))
+    ? `=HYPERLINK("${slipUrl}", "📄 ดูรูปสลิป")`
+    : slipUrl;
+  rowData[slipIdx] = slipDisplay;
 
   for (let i = 0; i < oHeaders.length; i++) {
     if (rowData[i] === undefined) rowData[i] = '';
@@ -965,7 +996,7 @@ function handleNewOrder(data) {
     assignTCol(['เวลาเช็คอิน', 'checkintime'], '');
     assignTCol(['จำนวนบัตรรวม', 'จำนวนใบ', 'จำนวน', 'qty'], data.qty);
     assignTCol(['ยอดบัตรรวม', 'ยอดรวม', 'ยอดเงินรวม', 'ราคารวม', 'total', 'totalprice', 'amount'], finalTotal);
-    tRowData[tSlipIdx] = slipUrl;
+    tRowData[tSlipIdx] = slipDisplay;
 
     for (let i = 0; i < tHeaders.length; i++) {
       if (tRowData[i] === undefined) tRowData[i] = '';
@@ -1126,9 +1157,44 @@ function backfillOrderTotals(ss) {
   return count;
 }
 
-// ฟังก์ชันสำหรับกดรันใน Google Apps Script Editor โดยตรง เพื่อเติมยอดรวมของทุกออเดอร์ในอดีตทันที
+// ฟังก์ชันแปลงลิงก์สลิปทั้งหมดในชีท Orders และ Tickets ให้แสดงผลเป็นปุ่มข้อความ "📄 ดูรูปสลิป"
+function formatAllSlipLinks(ss) {
+  let count = 0;
+  try {
+    [SHEET_ORDERS, SHEET_TICKETS].forEach(sheetName => {
+      const sheet = ss.getSheetByName(sheetName);
+      if (!sheet) return;
+      const data = sheet.getDataRange().getValues();
+      if (data.length <= 1) return;
+      const headers = data[0] || [];
+      const slipIdx = findColIndex(headers, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'slipurl', 'slip url', 'slip']);
+      if (slipIdx < 0) return;
+
+      for (let i = 1; i < data.length; i++) {
+        const val = String(data[i][slipIdx] || '').trim();
+        if (val.startsWith('http://') || val.startsWith('https://')) {
+          sheet.getRange(i + 1, slipIdx + 1).setFormula(`=HYPERLINK("${val}", "📄 ดูรูปสลิป")`);
+          count++;
+        }
+      }
+    });
+  } catch (err) {
+    console.warn('formatAllSlipLinks error:', err);
+  }
+  return count;
+}
+
+// ฟังก์ชันสำหรับกดรันใน Google Apps Script Editor โดยตรง เพื่อเติมยอดรวมและแปลงสลิปทั้งหมดในอดีตทันที
 function fixOrderTotals() {
   const ss = getSS();
-  const count = backfillOrderTotals(ss);
-  Logger.log(`อัปเดตยอดเงินรวมเรียบร้อยแล้วทั้งหมด ${count} แถว`);
+  const countTotals = backfillOrderTotals(ss);
+  const countSlips = formatAllSlipLinks(ss);
+  Logger.log(`อัปเดตยอดเงินรวม ${countTotals} แถว และแปลงลิงก์สลิปเรียบร้อยแล้วทั้งหมด ${countSlips} ช่อง`);
 }
+
+function fixSlipLinks() {
+  const ss = getSS();
+  const count = formatAllSlipLinks(ss);
+  Logger.log(`แปลงลิงก์สลิปเป็น [📄 ดูรูปสลิป] เรียบร้อยแล้วทั้งหมด ${count} ช่อง`);
+}
+
