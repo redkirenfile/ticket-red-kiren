@@ -490,12 +490,14 @@ function doGet(e) {
     const ss = getSS();
 
     // 0. ตรวจสอบและทำความสะอาดข้อมูลอัตโนมัติ
+    fixMojibakeStatuses(ss);
     cleanGhostOrders(ss);
     backfillOrderTotals(ss);
     cleanDuplicateTickets(ss);
     syncTicketsFromOrders(ss);
 
     if (action === 'cleanGhost' || action === 'fixTotals' || action === 'backfillTotals') {
+      const fixedMojibake = fixMojibakeStatuses(ss);
       const ghostCount = cleanGhostOrders(ss);
       const fixedCount = backfillOrderTotals(ss);
       const cleanedCount = cleanDuplicateTickets(ss);
@@ -503,7 +505,7 @@ function doGet(e) {
       const slipsCount = formatAllSlipLinks(ss);
       return output({
         success: true,
-        message: `ลบแถวผีใน Orders (${ghostCount} แถว), อัปเดตยอดบัตรรวม (${fixedCount} รายการ), ลบตั๋วซ้ำ (${cleanedCount} รายการ), ซิงค์ตั๋ว (${syncedCount} ใบ) และจัดฟอร์แมตสลิป (${slipsCount} ช่อง) เรียบร้อยแล้ว`
+        message: `แก้คำเพี้ยน/ต่างดาว (${fixedMojibake} ช่อง), ลบแถวผีใน Orders (${ghostCount} แถว), อัปเดตยอดบัตรรวม (${fixedCount} รายการ), ลบตั๋วซ้ำ (${cleanedCount} รายการ), ซิงค์ตั๋ว (${syncedCount} ใบ) และจัดฟอร์แมตสลิป (${slipsCount} ช่อง) เรียบร้อยแล้ว`
       });
     }
 
@@ -655,7 +657,7 @@ function doGet(e) {
         const parentOrder = ordersMap[oId] || {};
         
         const status = row[idxTStatus - 1];
-        const isCancelled = status === 'ยกเลิกแล้ว';
+        const isCancelled = status === 'ยกเลิกแล้ว' || String(status || '').indexOf('‡') >= 0;
         const isCheckedIn = status === 'เช็คอินแล้ว';
 
         let ticketNum = 1;
@@ -1538,6 +1540,36 @@ function cleanDuplicateTickets(ss) {
   return deletedCount;
 }
 
+// ฟังก์ชันแก้คำเพี้ยน/ภาษาต่างดาวในช่องสถานะ (เช่น ‡∏¢... ให้เป็น 'ยกเลิกแล้ว')
+function fixMojibakeStatuses(ss) {
+  let fixedCount = 0;
+  try {
+    const sheetsToCheck = [SHEET_TICKETS, SHEET_ORDERS];
+    sheetsToCheck.forEach(sheetName => {
+      const sheet = ss.getSheetByName(sheetName);
+      if (!sheet) return;
+      const data = sheet.getDataRange().getValues();
+      if (data.length <= 1) return;
+      const headers = data[0] || [];
+      const idxStatus = findColIndex(headers, ['สถานะเช็คอิน', 'สถานะ', 'status']);
+      if (idxStatus < 0) return;
+
+      for (let i = 1; i < data.length; i++) {
+        const val = String(data[i][idxStatus] || '').trim();
+        if (val.indexOf('‡') >= 0 || val.indexOf('â') >= 0 || val.indexOf('∏') >= 0) {
+          const cell = sheet.getRange(i + 1, idxStatus + 1);
+          cell.setValue('ยกเลิกแล้ว');
+          cell.setBackground('#f8d7da');
+          fixedCount++;
+        }
+      }
+    });
+  } catch (err) {
+    console.warn('fixMojibakeStatuses error:', err);
+  }
+  return fixedCount;
+}
+
 // ฟังก์ชันลบแถวผี/แถวว่าง/แถวซ้ำที่ตกค้างใน Orders sheet (เช่น แถวที่มีแต่เลขออร์เดอร์แต่ไม่มีชื่อ หรือยอดเป็น 0)
 function cleanGhostOrders(ss) {
   let deletedCount = 0;
@@ -1597,23 +1629,25 @@ function cleanGhostOrders(ss) {
 // ฟังก์ชันล้างข้อมูลผีและจัดระเบียบชีททั้งหมด (สามารถกดรันใน Apps Script Editor ได้ทันที)
 function cleanGhostData() {
   const ss = getSS();
+  const fixedMojibake = fixMojibakeStatuses(ss);
   const ghostCount = cleanGhostOrders(ss);
   const dupCount = cleanDuplicateTickets(ss);
   const totalsCount = backfillOrderTotals(ss);
   const slipsCount = formatAllSlipLinks(ss);
   const syncCount = syncTicketsFromOrders(ss);
-  Logger.log(`ลบแถวผีใน Orders: ${ghostCount} แถว, ลบตั๋วซ้ำ: ${dupCount} ใบ, เติมยอด: ${totalsCount}, แปลงสลิป: ${slipsCount}, ซิงค์ตั๋ว: ${syncCount}`);
+  Logger.log(`แก้คำเพี้ยน/ต่างดาว: ${fixedMojibake} ช่อง, ลบแถวผีใน Orders: ${ghostCount} แถว, ลบตั๋วซ้ำ: ${dupCount} ใบ, เติมยอด: ${totalsCount}, แปลงสลิป: ${slipsCount}, ซิงค์ตั๋ว: ${syncCount}`);
 }
 
 // ฟังก์ชันสำหรับกดรันใน Google Apps Script Editor โดยตรง เพื่อเติมยอดรวม ลบตั๋วซ้ำ และแปลงสลิปทั้งหมด
 function fixOrderTotals() {
   const ss = getSS();
+  const fixedMojibake = fixMojibakeStatuses(ss);
   const countGhosts = cleanGhostOrders(ss);
   const countTotals = backfillOrderTotals(ss);
   const countSlips = formatAllSlipLinks(ss);
   const countCleaned = cleanDuplicateTickets(ss);
   const countTickets = syncTicketsFromOrders(ss);
-  Logger.log(`ลบแถวผี ${countGhosts} แถว, อัปเดตยอดรวม ${countTotals} แถว, ลบตั๋วซ้ำ ${countCleaned} ใบ, เติมตั๋ว ${countTickets} ใบ, แปลงสลิป ${countSlips} ช่อง`);
+  Logger.log(`แก้คำเพี้ยน ${fixedMojibake} ช่อง, ลบแถวผี ${countGhosts} แถว, อัปเดตยอดรวม ${countTotals} แถว, ลบตั๋วซ้ำ ${countCleaned} ใบ, เติมตั๋ว ${countTickets} ใบ, แปลงสลิป ${countSlips} ช่อง`);
 }
 
 function fixSlipLinks() {
