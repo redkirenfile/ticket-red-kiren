@@ -393,13 +393,16 @@ function doGet(e) {
 
     // 0. ตรวจสอบและเติมยอดบัตรรวม (TotalPrice) ให้อัตโนมัติหากมีแถวที่ว่างอยู่
     backfillOrderTotals(ss);
+    // ลบตั๋วซ้ำใน Tickets sheet (ถ้ามีรายการเบิ้ล)
+    cleanDuplicateTickets(ss);
     // ซิงค์ตั๋วจาก Orders ไปยัง Tickets sheet อัตโนมัติหากมีตั๋วที่ขาดอยู่
     syncTicketsFromOrders(ss);
 
     if (action === 'fixTotals' || action === 'backfillTotals') {
       const fixedCount = backfillOrderTotals(ss);
+      const cleanedCount = cleanDuplicateTickets(ss);
       const syncedCount = syncTicketsFromOrders(ss);
-      return output({ success: true, message: `อัปเดตยอดบัตรรวม (${fixedCount} รายการ) และซิงค์ตั๋ว (${syncedCount} ใบ) เรียบร้อยแล้ว` });
+      return output({ success: true, message: `อัปเดตยอดบัตรรวม (${fixedCount} รายการ), ลบตั๋วซ้ำ (${cleanedCount} รายการ) และซิงค์ตั๋ว (${syncedCount} ใบ) เรียบร้อยแล้ว` });
     }
 
     // 1. ดึงเฉพาะการตั้งค่าส่วนกลาง (เช่น เช็คสถานะ Early Bird ในหน้าจองลูกค้า + ยอดจองกลางเพื่อคำนวณที่นั่งเหลือ)
@@ -534,12 +537,13 @@ function doGet(e) {
         ordersMap[order.orderId] = order;
       }
 
-      // แมปตั๋วรายใบ
+      // แมปตั๋วรายใบ พร้อมตัดรายการซ้ำออก
+      const seenTicketKeys = new Set();
       for (let i = 1; i < tData.length; i++) {
         const row = tData[i];
-        const tId = row[idxTId - 1];
+        let tId = String(row[idxTId - 1] || '').trim();
         if (!tId) continue;
-        const oId = row[idxTOId - 1];
+        const oId = String(row[idxTOId - 1] || '').trim();
         const parentOrder = ordersMap[oId] || {};
         
         const status = row[idxTStatus - 1];
@@ -547,8 +551,21 @@ function doGet(e) {
         const isCheckedIn = status === 'เช็คอินแล้ว';
 
         let ticketNum = 1;
-        const match = tId.match(/-T(\d+)$/);
+        const match = tId.match(/-T0*(\d+)$/);
         if (match) ticketNum = Number(match[1]);
+
+        const stdTId = `${oId}-T${String(ticketNum).padStart(2, '0')}`;
+        const dedupKey = `${oId}|${ticketNum}`;
+
+        if (seenTicketKeys.has(dedupKey)) {
+          // หากแถวที่เจอทีหลังมีการเช็คอิน ให้อัปเดตสถานะเช็คอินให้ตั๋วตัวจริง
+          if (isCheckedIn && tickets[stdTId] && !tickets[stdTId].checkedIn) {
+            tickets[stdTId].checkedIn = true;
+            tickets[stdTId].checkInTime = row[idxTTime - 1] || null;
+          }
+          continue;
+        }
+        seenTicketKeys.add(dedupKey);
 
         let tSlip = (idxTSlip ? row[idxTSlip - 1] : '') || parentOrder.slipUrl || parentOrder.slipImage || '';
         const tfVal = (idxTSlip && tFormulas[i]) ? tFormulas[i][idxTSlip - 1] : '';
@@ -557,8 +574,8 @@ function doGet(e) {
           if (m) tSlip = m[0];
         }
 
-        tickets[tId] = {
-          ticketId: tId,
+        tickets[stdTId] = {
+          ticketId: stdTId,
           ticketNum: ticketNum,
           orderId: oId,
           name: row[idxTName - 1] || parentOrder.name || '',
@@ -585,9 +602,8 @@ function doGet(e) {
         const oTkts = Object.values(tickets).filter(t => t.orderId === o.orderId);
         const targetQty = o.qty > 0 ? o.qty : 1;
         if (oTkts.length < targetQty) {
-          const tIds = (o.ticketIds && o.ticketIds.length) ? o.ticketIds : [];
           for (let k = 1; k <= targetQty; k++) {
-            const tid = tIds[k - 1] || `${o.orderId}-T${k}`;
+            const tid = `${o.orderId}-T${String(k).padStart(2, '0')}`;
             if (!tickets[tid]) {
               tickets[tid] = {
                 ticketId: tid,
@@ -1261,15 +1277,21 @@ function syncTicketsFromOrders(ss) {
 
     const oFormulas = ordersSheet.getDataRange().getFormulas();
 
-    // รวบรวมรหัสบัตรที่มีอยู่แล้วใน Tickets sheet เพื่อไม่ให้ใส่ซ้ำ
+    // รวบรวมตั๋วที่มีอยู่แล้วใน Tickets sheet ตามคีย์ `${orderId}|${ticketNum}`
     const tData = ticketsSheet.getDataRange().getValues();
     const tHeaders = tData[0] || [];
     const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']);
-    const existingTicketIds = new Set();
+    const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
+    const existingTicketKeys = new Set();
     if (idxTId >= 0) {
       for (let i = 1; i < tData.length; i++) {
         const idVal = String(tData[i][idxTId] || '').trim();
-        if (idVal) existingTicketIds.add(idVal);
+        if (!idVal) continue;
+        const oId = idxTOId >= 0 ? String(tData[i][idxTOId] || '').trim() : '';
+        const m = idVal.match(/-T0*(\d+)$/);
+        const num = m ? Number(m[1]) : 1;
+        const realOId = oId || idVal.replace(/-T\d+$/, '');
+        if (realOId) existingTicketKeys.add(`${realOId}|${num}`);
       }
     }
 
@@ -1297,20 +1319,10 @@ function syncTicketsFromOrders(ss) {
         slipVal = `=HYPERLINK("${slipVal}", "📄 ดูรูปสลิป")`;
       }
 
-      // ตรวจสอบรหัสบัตร
-      let tIds = [];
-      if (idxOTickets >= 0 && oRow[idxOTickets]) {
-        tIds = String(oRow[idxOTickets]).split(',').map(s => s.trim()).filter(Boolean);
-      }
-      if (tIds.length < qty) {
-        for (let k = 1; k <= qty; k++) {
-          const genId = `${orderId}-T${k}`;
-          if (!tIds.includes(genId)) tIds.push(genId);
-        }
-      }
-
-      tIds.forEach(tid => {
-        if (!existingTicketIds.has(tid)) {
+      for (let k = 1; k <= qty; k++) {
+        const key = `${orderId}|${k}`;
+        if (!existingTicketKeys.has(key)) {
+          const tid = `${orderId}-T${String(k).padStart(2, '0')}`;
           const newTRow = [];
           for (let c = 0; c < tHeaders.length; c++) newTRow.push('');
 
@@ -1333,10 +1345,10 @@ function syncTicketsFromOrders(ss) {
           assign(['ยอดบัตรรวม', 'ยอดรวม', 'ยอดเงินรวม', 'ราคารวม', 'total', 'totalprice'], total);
 
           rowsToAdd.push(newTRow);
-          existingTicketIds.add(tid);
+          existingTicketKeys.add(key);
           addedCount++;
         }
-      });
+      }
     }
 
     if (rowsToAdd.length > 0) {
@@ -1350,13 +1362,76 @@ function syncTicketsFromOrders(ss) {
   return addedCount;
 }
 
-// ฟังก์ชันสำหรับกดรันใน Google Apps Script Editor โดยตรง เพื่อเติมยอดรวมและแปลงสลิปทั้งหมดในอดีตทันที
+// ฟังก์ชันลบตั๋วที่ซ้ำกันในชีท Tickets (เช่น ตั๋วที่มีทั้ง -T01 และ -T1 หรือรายการที่เบิ้ลขึ้นมา)
+function cleanDuplicateTickets(ss) {
+  let deletedCount = 0;
+  try {
+    const ticketsSheet = ss.getSheetByName(SHEET_TICKETS);
+    if (!ticketsSheet) return 0;
+    const tData = ticketsSheet.getDataRange().getValues();
+    if (tData.length <= 1) return 0;
+    const tHeaders = tData[0] || [];
+    const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']);
+    const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
+    const idxTStatus = findColIndex(tHeaders, ['สถานะเช็คอิน', 'สถานะ', 'status']);
+    if (idxTId < 0) return 0;
+
+    const bestRows = new Map(); // key -> { rowNum, rawTId, isCheckedIn, hasPad }
+
+    for (let i = 1; i < tData.length; i++) {
+      const rowNum = i + 1;
+      const rawTId = String(tData[i][idxTId] || '').trim();
+      if (!rawTId) continue;
+      const oId = idxTOId >= 0 ? String(tData[i][idxTOId] || '').trim() : '';
+      
+      const m = rawTId.match(/-T0*(\d+)$/);
+      const ticketNum = m ? Number(m[1]) : 1;
+      const realOId = oId || rawTId.replace(/-T\d+$/, '');
+      const key = `${realOId}|${ticketNum}`;
+      const isCheckedIn = idxTStatus >= 0 && String(tData[i][idxTStatus] || '') === 'เช็คอินแล้ว';
+      const hasPad = !!rawTId.match(/-T\d{2,}$/); // เช่น -T01
+
+      if (!bestRows.has(key)) {
+        bestRows.set(key, { rowNum, rawTId, isCheckedIn, hasPad });
+      } else {
+        const existing = bestRows.get(key);
+        if (isCheckedIn && !existing.isCheckedIn) {
+          bestRows.set(key, { rowNum, rawTId, isCheckedIn, hasPad });
+        } else if (!existing.isCheckedIn && hasPad && !existing.hasPad) {
+          bestRows.set(key, { rowNum, rawTId, isCheckedIn, hasPad });
+        }
+      }
+    }
+
+    const rowsToKeep = new Set();
+    for (const item of bestRows.values()) {
+      rowsToKeep.add(item.rowNum);
+    }
+
+    // ลบแถวซ้ำจากล่างขึ้นบน เพื่อไม่ให้กระทบตำแหน่ง index แถว
+    for (let i = tData.length - 1; i >= 1; i--) {
+      const rowNum = i + 1;
+      const rawTId = String(tData[i][idxTId] || '').trim();
+      if (!rawTId) continue;
+      if (!rowsToKeep.has(rowNum)) {
+        ticketsSheet.deleteRow(rowNum);
+        deletedCount++;
+      }
+    }
+  } catch (err) {
+    console.warn('cleanDuplicateTickets error:', err);
+  }
+  return deletedCount;
+}
+
+// ฟังก์ชันสำหรับกดรันใน Google Apps Script Editor โดยตรง เพื่อเติมยอดรวม ลบตั๋วซ้ำ และแปลงสลิปทั้งหมด
 function fixOrderTotals() {
   const ss = getSS();
   const countTotals = backfillOrderTotals(ss);
   const countSlips = formatAllSlipLinks(ss);
+  const countCleaned = cleanDuplicateTickets(ss);
   const countTickets = syncTicketsFromOrders(ss);
-  Logger.log(`อัปเดตยอดเงินรวม ${countTotals} แถว, แปลงลิงก์สลิป ${countSlips} ช่อง, และเติมตั๋วลง Tickets ${countTickets} ใบ`);
+  Logger.log(`อัปเดตยอดรวม ${countTotals} แถว, ลบตั๋วซ้ำ ${countCleaned} ใบ, เติมตั๋ว ${countTickets} ใบ, แปลงสลิป ${countSlips} ช่อง`);
 }
 
 function fixSlipLinks() {
@@ -1367,7 +1442,15 @@ function fixSlipLinks() {
 
 function fixTickets() {
   const ss = getSS();
+  const countCleaned = cleanDuplicateTickets(ss);
   const count = syncTicketsFromOrders(ss);
-  Logger.log(`ซิงค์ตั๋วจาก Orders ไปยังชีท Tickets เรียบร้อยแล้วทั้งหมด ${count} ใบ`);
+  Logger.log(`ลบตั๋วที่ซ้ำกัน ${countCleaned} ใบ และซิงค์ตั๋วที่ขาด ${count} ใบ เรียบร้อยแล้ว`);
 }
+
+function fixDuplicates() {
+  const ss = getSS();
+  const count = cleanDuplicateTickets(ss);
+  Logger.log(`ลบตั๋วที่ซ้ำกันในชีท Tickets เรียบร้อยแล้วทั้งหมด ${count} ใบ`);
+}
+
 
