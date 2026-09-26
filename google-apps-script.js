@@ -393,10 +393,13 @@ function doGet(e) {
 
     // 0. ตรวจสอบและเติมยอดบัตรรวม (TotalPrice) ให้อัตโนมัติหากมีแถวที่ว่างอยู่
     backfillOrderTotals(ss);
+    // ซิงค์ตั๋วจาก Orders ไปยัง Tickets sheet อัตโนมัติหากมีตั๋วที่ขาดอยู่
+    syncTicketsFromOrders(ss);
 
     if (action === 'fixTotals' || action === 'backfillTotals') {
       const fixedCount = backfillOrderTotals(ss);
-      return output({ success: true, message: `อัปเดตยอดบัตรรวมเรียบร้อยแล้ว (${fixedCount} รายการ)` });
+      const syncedCount = syncTicketsFromOrders(ss);
+      return output({ success: true, message: `อัปเดตยอดบัตรรวม (${fixedCount} รายการ) และซิงค์ตั๋ว (${syncedCount} ใบ) เรียบร้อยแล้ว` });
     }
 
     // 1. ดึงเฉพาะการตั้งค่าส่วนกลาง (เช่น เช็คสถานะ Early Bird ในหน้าจองลูกค้า + ยอดจองกลางเพื่อคำนวณที่นั่งเหลือ)
@@ -576,6 +579,41 @@ function doGet(e) {
           slipImage: tSlip
         };
       }
+
+      // ตรวจสอบความสมบูรณ์ หากใน Tickets ยังไม่มีข้อมูล ให้สร้าง ticket เสมือนขึ้นมาทันทีเพื่อแสดงในหน้า Staff
+      orders.forEach(o => {
+        const oTkts = Object.values(tickets).filter(t => t.orderId === o.orderId);
+        const targetQty = o.qty > 0 ? o.qty : 1;
+        if (oTkts.length < targetQty) {
+          const tIds = (o.ticketIds && o.ticketIds.length) ? o.ticketIds : [];
+          for (let k = 1; k <= targetQty; k++) {
+            const tid = tIds[k - 1] || `${o.orderId}-T${k}`;
+            if (!tickets[tid]) {
+              tickets[tid] = {
+                ticketId: tid,
+                ticketNum: k,
+                orderId: o.orderId,
+                name: o.name,
+                nickname: o.nickname || '',
+                phone: o.phone,
+                email: o.email,
+                note: o.note,
+                type: o.typeName,
+                showDate: o.showDate,
+                pricePerTicket: o.pricePerTicket,
+                total: o.total,
+                qty: targetQty,
+                checkedIn: false,
+                checkInTime: null,
+                cancelled: o.cancelled || false,
+                cancelledAt: null,
+                slipUrl: o.slipUrl,
+                slipImage: o.slipImage
+              };
+            }
+          }
+        }
+      });
 
       // สแกนสถานะยกเลิกยกยวงของออร์เดอร์
       orders.forEach(o => {
@@ -1184,17 +1222,152 @@ function formatAllSlipLinks(ss) {
   return count;
 }
 
+// ฟังก์ชันตรวจสอบและเติมตั๋วที่ขาดหายไปลงชีท Tickets จาก Orders sheet อัตโนมัติ
+function syncTicketsFromOrders(ss) {
+  let addedCount = 0;
+  try {
+    const ordersSheet = ss.getSheetByName(SHEET_ORDERS);
+    const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, [
+      'รหัสบัตร',
+      'เลขที่คำสั่งซื้อ',
+      'ชื่อ-นามสกุล',
+      'ชื่อเล่น',
+      'เบอร์โทร',
+      'ประเภทบัตร',
+      'รอบการแสดง',
+      'สถานะเช็คอิน',
+      'เวลาเช็คอิน',
+      'สลิปการโอนเงิน'
+    ]);
+    if (!ordersSheet) return 0;
+
+    const oData = ordersSheet.getDataRange().getValues();
+    if (oData.length <= 1) return 0;
+    const oHeaders = oData[0] || [];
+
+    const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'เลขที่ออเดอร์', 'เลขออเดอร์', 'orderid', 'order id']);
+    if (idxOId < 0) return 0;
+
+    const idxOName = findColIndex(oHeaders, ['ชื่อ-นามสกุล', 'ชื่อนามสกุล', 'ชื่อ', 'name', 'fullname']);
+    const idxONick = findColIndex(oHeaders, ['ชื่อเล่น', 'nickname', 'nick']);
+    const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'เบอร์โทรศัพท์', 'เบอร์', 'phone', 'tel']);
+    const idxOType = findColIndex(oHeaders, ['ประเภทบัตร', 'ประเภท', 'tickettype', 'type']);
+    const idxOQty = findColIndex(oHeaders, ['จำนวนใบ', 'จำนวน', 'qty', 'quantity', 'ยอดบัตรรวม (ใบ)', 'ยอดบัตรรวม']);
+    const idxOShowDate = findColIndex(oHeaders, ['รอบการแสดง', 'รอบ', 'showdate', 'round']);
+    const idxOTickets = findColIndex(oHeaders, ['รหัสบัตรทั้งหมด', 'รหัสบัตร', 'ticketids', 'tickets']);
+    const idxOSlip = findColIndex(oHeaders, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'slipurl', 'slip url', 'slip']);
+    const idxOTotal = findColIndex(oHeaders, ['totalprice', 'total', 'ราคารวม', 'ยอดรวม', 'ยอดบัตรรวม', 'ยอดเงินรวม', 'amount']);
+    const idxOStatus = findColIndex(oHeaders, ['สถานะ', 'status']);
+
+    const oFormulas = ordersSheet.getDataRange().getFormulas();
+
+    // รวบรวมรหัสบัตรที่มีอยู่แล้วใน Tickets sheet เพื่อไม่ให้ใส่ซ้ำ
+    const tData = ticketsSheet.getDataRange().getValues();
+    const tHeaders = tData[0] || [];
+    const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']);
+    const existingTicketIds = new Set();
+    if (idxTId >= 0) {
+      for (let i = 1; i < tData.length; i++) {
+        const idVal = String(tData[i][idxTId] || '').trim();
+        if (idVal) existingTicketIds.add(idVal);
+      }
+    }
+
+    const rowsToAdd = [];
+    for (let i = 1; i < oData.length; i++) {
+      const oRow = oData[i];
+      const orderId = String(oRow[idxOId] || '').trim();
+      if (!orderId) continue;
+
+      const qty = idxOQty >= 0 ? Math.max(1, Number(oRow[idxOQty]) || 1) : 1;
+      const name = idxOName >= 0 ? String(oRow[idxOName] || '').trim() : '';
+      const nick = idxONick >= 0 ? String(oRow[idxONick] || '').trim() : '';
+      const phone = idxOPhone >= 0 ? formatPhoneToWrite(oRow[idxOPhone]) : '';
+      const type = idxOType >= 0 ? String(oRow[idxOType] || '').trim() : 'REGULAR';
+      const showDate = idxOShowDate >= 0 ? String(oRow[idxOShowDate] || '').trim() : '';
+      const total = idxOTotal >= 0 ? Number(oRow[idxOTotal]) || 0 : 0;
+      const status = idxOStatus >= 0 && String(oRow[idxOStatus] || '').includes('ยกเลิก') ? 'ยกเลิกแล้ว' : 'ยังไม่เช็คอิน';
+
+      // สลิป
+      let slipVal = idxOSlip >= 0 ? (oRow[idxOSlip] || '') : '';
+      const fVal = (idxOSlip >= 0 && oFormulas[i]) ? oFormulas[i][idxOSlip] : '';
+      if (fVal && String(fVal).indexOf('http') >= 0) {
+        slipVal = fVal;
+      } else if (String(slipVal).startsWith('http')) {
+        slipVal = `=HYPERLINK("${slipVal}", "📄 ดูรูปสลิป")`;
+      }
+
+      // ตรวจสอบรหัสบัตร
+      let tIds = [];
+      if (idxOTickets >= 0 && oRow[idxOTickets]) {
+        tIds = String(oRow[idxOTickets]).split(',').map(s => s.trim()).filter(Boolean);
+      }
+      if (tIds.length < qty) {
+        for (let k = 1; k <= qty; k++) {
+          const genId = `${orderId}-T${k}`;
+          if (!tIds.includes(genId)) tIds.push(genId);
+        }
+      }
+
+      tIds.forEach(tid => {
+        if (!existingTicketIds.has(tid)) {
+          const newTRow = [];
+          for (let c = 0; c < tHeaders.length; c++) newTRow.push('');
+
+          const assign = (names, val) => {
+            const cIdx = findColIndex(tHeaders, names);
+            if (cIdx >= 0) newTRow[cIdx] = val;
+          };
+
+          assign(['รหัสบัตร', 'ticketid'], tid);
+          assign(['เลขที่คำสั่งซื้อ', 'orderid'], orderId);
+          assign(['ชื่อ-นามสกุล', 'name'], name);
+          assign(['ชื่อเล่น', 'nickname', 'nick'], nick);
+          assign(['เบอร์โทร', 'phone'], phone);
+          assign(['ประเภทบัตร', 'type'], type);
+          assign(['รอบการแสดง', 'showdate'], showDate);
+          assign(['สถานะเช็คอิน', 'status'], status);
+          assign(['เวลาเช็คอิน', 'time'], '');
+          assign(['สลิปการโอนเงิน', 'สลิป', 'slipurl', 'slip url', 'slip'], slipVal);
+          assign(['จำนวนบัตรรวม', 'จำนวนใบ', 'จำนวน', 'qty'], qty);
+          assign(['ยอดบัตรรวม', 'ยอดรวม', 'ยอดเงินรวม', 'ราคารวม', 'total', 'totalprice'], total);
+
+          rowsToAdd.push(newTRow);
+          existingTicketIds.add(tid);
+          addedCount++;
+        }
+      });
+    }
+
+    if (rowsToAdd.length > 0) {
+      for (let r = 0; r < rowsToAdd.length; r++) {
+        ticketsSheet.appendRow(rowsToAdd[r]);
+      }
+    }
+  } catch (err) {
+    console.warn('syncTicketsFromOrders error:', err);
+  }
+  return addedCount;
+}
+
 // ฟังก์ชันสำหรับกดรันใน Google Apps Script Editor โดยตรง เพื่อเติมยอดรวมและแปลงสลิปทั้งหมดในอดีตทันที
 function fixOrderTotals() {
   const ss = getSS();
   const countTotals = backfillOrderTotals(ss);
   const countSlips = formatAllSlipLinks(ss);
-  Logger.log(`อัปเดตยอดเงินรวม ${countTotals} แถว และแปลงลิงก์สลิปเรียบร้อยแล้วทั้งหมด ${countSlips} ช่อง`);
+  const countTickets = syncTicketsFromOrders(ss);
+  Logger.log(`อัปเดตยอดเงินรวม ${countTotals} แถว, แปลงลิงก์สลิป ${countSlips} ช่อง, และเติมตั๋วลง Tickets ${countTickets} ใบ`);
 }
 
 function fixSlipLinks() {
   const ss = getSS();
   const count = formatAllSlipLinks(ss);
   Logger.log(`แปลงลิงก์สลิปเป็น [📄 ดูรูปสลิป] เรียบร้อยแล้วทั้งหมด ${count} ช่อง`);
+}
+
+function fixTickets() {
+  const ss = getSS();
+  const count = syncTicketsFromOrders(ss);
+  Logger.log(`ซิงค์ตั๋วจาก Orders ไปยังชีท Tickets เรียบร้อยแล้วทั้งหมด ${count} ใบ`);
 }
 
