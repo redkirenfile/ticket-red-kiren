@@ -564,7 +564,6 @@ function doGet(e) {
       }
 
       const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
-      const tData = ticketsSheet.getDataRange().getValues();
       const tickets = {};
       
       const ordersSheet = getOrCreateSheet(ss, SHEET_ORDERS, []);
@@ -857,6 +856,7 @@ function doGet(e) {
       for (let i = 1; i < oData.length; i++) {
         const row = oData[i];
         const oId = idxOId >= 0 ? row[idxOId] : '';
+        if (oId && matchedOrderIds.indexOf(oId) >= 0) {
           let slipVal = (idxOSlip >= 0 ? row[idxOSlip] : '') || '';
           const fVal = (idxOSlip >= 0 && oFormulas[i]) ? oFormulas[i][idxOSlip] : '';
           if (fVal && String(fVal).indexOf('http') >= 0) {
