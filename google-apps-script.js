@@ -124,17 +124,21 @@ function doPost(e) {
       const ss = getSS();
       const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
       const ticketId = data.ticketId;
+      const orderId = data.orderId;
 
       const tData = ticketsSheet.getDataRange().getValues();
       const tHeaders = tData[0] || [];
       const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']) + 1;
+      const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']) + 1;
       const idxTStatus = findColIndex(tHeaders, ['สถานะเช็คอิน', 'สถานะ', 'status']) + 1;
       const idxTTime = findColIndex(tHeaders, ['เวลาเช็คอิน', 'time']) + 1;
 
       let foundRow = -1;
+      let matchedOId = orderId;
       for (let i = 1; i < tData.length; i++) {
         if (String(tData[i][idxTId - 1]).trim() === String(ticketId).trim()) {
           foundRow = i + 1;
+          if (!matchedOId && idxTOId > 0) matchedOId = String(tData[i][idxTOId - 1]).trim();
           break;
         }
       }
@@ -148,6 +152,46 @@ function doPost(e) {
         if (idxTTime > 0) {
           ticketsSheet.getRange(foundRow, idxTTime).setValue('');
         }
+
+        // ตรวจสอบว่าตั๋วทุกใบของออร์เดอร์นี้ถูกยกเลิกแล้วหรือไม่
+        if (matchedOId) {
+          const updatedTData = ticketsSheet.getDataRange().getValues();
+          let allCancelled = true;
+          let hasTicket = false;
+          for (let i = 1; i < updatedTData.length; i++) {
+            if (String(updatedTData[i][idxTOId - 1]).trim() === matchedOId) {
+              hasTicket = true;
+              if (String(updatedTData[i][idxTStatus - 1]).trim() !== 'ยกเลิกแล้ว') {
+                allCancelled = false;
+                break;
+              }
+            }
+          }
+          if (hasTicket && allCancelled) {
+            const ordersSheet = getOrCreateSheet(ss, SHEET_ORDERS, []);
+            const oData = ordersSheet.getDataRange().getValues();
+            const oHeaders = oData[0] || [];
+            const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
+            const idxOStatus = findColIndex(oHeaders, ['สถานะ', 'status']);
+            const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note', 'remark']);
+            if (idxOId >= 0) {
+              for (let i = 1; i < oData.length; i++) {
+                if (String(oData[i][idxOId]).trim() === matchedOId) {
+                  const rowNum = i + 1;
+                  if (idxOStatus >= 0) {
+                    ordersSheet.getRange(rowNum, idxOStatus + 1).setValue('ยกเลิกแล้ว').setBackground('#f8d7da');
+                  } else if (idxONote >= 0) {
+                    const noteVal = String(oData[i][idxONote] || '');
+                    if (!noteVal.includes('[ยกเลิกแล้ว]')) {
+                      ordersSheet.getRange(rowNum, idxONote + 1).setValue(noteVal ? `[ยกเลิกแล้ว] ${noteVal}` : '[ยกเลิกแล้ว]');
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
         return output({ success: true, message: 'ยกเลิกบัตรเรียบร้อยแล้ว' });
       }
       return output({ success: false, error: 'ไม่พบรหัสบัตร ' + ticketId });
@@ -157,7 +201,8 @@ function doPost(e) {
     if (data.action === 'cancelOrder') {
       const ss = getSS();
       const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
-      const orderId = data.orderId;
+      const ordersSheet = getOrCreateSheet(ss, SHEET_ORDERS, []);
+      const orderId = String(data.orderId || '').trim();
 
       const tData = ticketsSheet.getDataRange().getValues();
       const tHeaders = tData[0] || [];
@@ -168,7 +213,7 @@ function doPost(e) {
       let count = 0;
       if (idxTOId > 0 && idxTStatus > 0) {
         for (let i = 1; i < tData.length; i++) {
-          if (String(tData[i][idxTOId - 1]).trim() === String(orderId).trim()) {
+          if (String(tData[i][idxTOId - 1]).trim() === orderId) {
             const rowNum = i + 1;
             const statusCell = ticketsSheet.getRange(rowNum, idxTStatus);
             statusCell.setValue('ยกเลิกแล้ว');
@@ -180,6 +225,30 @@ function doPost(e) {
           }
         }
       }
+
+      // อัปเดตสถานะใน Orders sheet
+      const oData = ordersSheet.getDataRange().getValues();
+      const oHeaders = oData[0] || [];
+      const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
+      const idxOStatus = findColIndex(oHeaders, ['สถานะ', 'status']);
+      const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note', 'remark']);
+
+      if (idxOId >= 0) {
+        for (let i = 1; i < oData.length; i++) {
+          if (String(oData[i][idxOId]).trim() === orderId) {
+            const rowNum = i + 1;
+            if (idxOStatus >= 0) {
+              ordersSheet.getRange(rowNum, idxOStatus + 1).setValue('ยกเลิกแล้ว').setBackground('#f8d7da');
+            } else if (idxONote >= 0) {
+              const noteVal = String(oData[i][idxONote] || '');
+              if (!noteVal.includes('[ยกเลิกแล้ว]')) {
+                ordersSheet.getRange(rowNum, idxONote + 1).setValue(noteVal ? `[ยกเลิกแล้ว] ${noteVal}` : '[ยกเลิกแล้ว]');
+              }
+            }
+          }
+        }
+      }
+
       return output({ success: true, message: `ยกเลิกออร์เดอร์ ${count} ใบเรียบร้อยแล้ว` });
     }
 
@@ -187,7 +256,8 @@ function doPost(e) {
     if (data.action === 'restoreOrder') {
       const ss = getSS();
       const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
-      const orderId = data.orderId;
+      const ordersSheet = getOrCreateSheet(ss, SHEET_ORDERS, []);
+      const orderId = String(data.orderId || '').trim();
 
       const tData = ticketsSheet.getDataRange().getValues();
       const tHeaders = tData[0] || [];
@@ -198,7 +268,7 @@ function doPost(e) {
       let count = 0;
       if (idxTOId > 0 && idxTStatus > 0) {
         for (let i = 1; i < tData.length; i++) {
-          if (String(tData[i][idxTOId - 1]).trim() === String(orderId).trim()) {
+          if (String(tData[i][idxTOId - 1]).trim() === orderId) {
             const rowNum = i + 1;
             const statusCell = ticketsSheet.getRange(rowNum, idxTStatus);
             statusCell.setValue('ยังไม่เช็คอิน');
@@ -210,6 +280,28 @@ function doPost(e) {
           }
         }
       }
+
+      // ปลดสถานะยกเลิกใน Orders sheet
+      const oData = ordersSheet.getDataRange().getValues();
+      const oHeaders = oData[0] || [];
+      const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
+      const idxOStatus = findColIndex(oHeaders, ['สถานะ', 'status']);
+      const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note', 'remark']);
+
+      if (idxOId >= 0) {
+        for (let i = 1; i < oData.length; i++) {
+          if (String(oData[i][idxOId]).trim() === orderId) {
+            const rowNum = i + 1;
+            if (idxOStatus >= 0) {
+              ordersSheet.getRange(rowNum, idxOStatus + 1).setValue('ปกติ').setBackground('#ffffff');
+            } else if (idxONote >= 0) {
+              const noteVal = String(oData[i][idxONote] || '').replace('[ยกเลิกแล้ว]', '').trim();
+              ordersSheet.getRange(rowNum, idxONote + 1).setValue(noteVal);
+            }
+          }
+        }
+      }
+
       return output({ success: true, message: `กู้คืนออร์เดอร์ ${count} ใบเรียบร้อยแล้ว` });
     }
 
@@ -217,10 +309,10 @@ function doPost(e) {
     if (data.action === 'deleteTicket') {
       const ss = getSS();
       const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
-      const ticketId = data.ticketId;
-      let orderId = data.orderId;
+      const ticketId = String(data.ticketId || '').trim();
+      let orderId = String(data.orderId || '').trim();
 
-      // 1. ลบแถวใน Tickets sheet
+      // 1. ลบแถวใน Tickets sheet (ลบทุกแถวที่ตรงกับ ticketId)
       const tData = ticketsSheet.getDataRange().getValues();
       const tHeaders = tData[0] || [];
       const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']);
@@ -228,12 +320,11 @@ function doPost(e) {
 
       if (idxTId >= 0) {
         for (let i = tData.length - 1; i >= 1; i--) {
-          if (String(tData[i][idxTId]).trim() === String(ticketId).trim()) {
+          if (String(tData[i][idxTId]).trim() === ticketId) {
             if (!orderId && idxTOId >= 0) {
-              orderId = tData[i][idxTOId];
+              orderId = String(tData[i][idxTOId]).trim();
             }
             ticketsSheet.deleteRow(i + 1);
-            break;
           }
         }
       }
@@ -251,7 +342,7 @@ function doPost(e) {
 
         if (idxOId >= 0) {
           for (let i = oData.length - 1; i >= 1; i--) {
-            if (String(oData[i][idxOId]).trim() === String(orderId).trim()) {
+            if (String(oData[i][idxOId]).trim() === orderId) {
               const rowNum = i + 1;
               let currentTkts = [];
               if (idxOTkts >= 0) {
@@ -269,11 +360,11 @@ function doPost(e) {
                 if (idxOTotal >= 0 && pricePer > 0) ordersSheet.getRange(rowNum, idxOTotal + 1).setValue(newQty * pricePer);
                 if (idxOTkts >= 0) ordersSheet.getRange(rowNum, idxOTkts + 1).setValue(currentTkts.join(', '));
               }
-              break;
             }
           }
         }
       }
+      cleanGhostOrders(ss);
       return output({ success: true, message: 'ลบตั๋วออกจาก Google Sheets เรียบร้อยแล้ว' });
     }
 
@@ -282,34 +373,37 @@ function doPost(e) {
       const ss = getSS();
       const ordersSheet = getOrCreateSheet(ss, SHEET_ORDERS, []);
       const ticketsSheet = getOrCreateSheet(ss, SHEET_TICKETS, []);
-      const orderId = data.orderId;
+      const orderId = String(data.orderId || '').trim();
 
-      // 1. ลบตั๋วทั้งหมดของออร์เดอร์นี้ใน Tickets sheet
-      const tData = ticketsSheet.getDataRange().getValues();
-      const tHeaders = tData[0] || [];
-      const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
+      if (orderId) {
+        // 1. ลบตั๋วทั้งหมดของออร์เดอร์นี้ใน Tickets sheet
+        const tData = ticketsSheet.getDataRange().getValues();
+        const tHeaders = tData[0] || [];
+        const idxTOId = findColIndex(tHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
+        const idxTId = findColIndex(tHeaders, ['รหัสบัตร', 'ticketid', 'ticket id']);
 
-      if (idxTOId >= 0) {
         for (let i = tData.length - 1; i >= 1; i--) {
-          if (String(tData[i][idxTOId]).trim() === String(orderId).trim()) {
+          const rowOId = idxTOId >= 0 ? String(tData[i][idxTOId] || '').trim() : '';
+          const rowTId = idxTId >= 0 ? String(tData[i][idxTId] || '').trim() : '';
+          if (rowOId === orderId || rowTId.startsWith(orderId)) {
             ticketsSheet.deleteRow(i + 1);
           }
         }
-      }
 
-      // 2. ลบแถวใน Orders sheet
-      const oData = ordersSheet.getDataRange().getValues();
-      const oHeaders = oData[0] || [];
-      const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
+        // 2. ลบแถวใน Orders sheet (ลบทุกแถวที่ตรงกับ orderId ป้องกันแถวซ้ำ)
+        const oData = ordersSheet.getDataRange().getValues();
+        const oHeaders = oData[0] || [];
+        const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
 
-      if (idxOId >= 0) {
-        for (let i = oData.length - 1; i >= 1; i--) {
-          if (String(oData[i][idxOId]).trim() === String(orderId).trim()) {
-            ordersSheet.deleteRow(i + 1);
-            break;
+        if (idxOId >= 0) {
+          for (let i = oData.length - 1; i >= 1; i--) {
+            if (String(oData[i][idxOId] || '').trim() === orderId) {
+              ordersSheet.deleteRow(i + 1);
+            }
           }
         }
       }
+      cleanGhostOrders(ss);
       return output({ success: true, message: 'ลบออร์เดอร์ออกจาก Google Sheets เรียบร้อยแล้ว' });
     }
 
@@ -372,7 +466,11 @@ function doPost(e) {
     }
 
     // 5. บันทึกคำสั่งซื้อใหม่ (จองตั๋วปกติ หรือ โควต้าสตาฟ)
-    return handleNewOrder(data);
+    if (data.action === 'newOrder' || (!data.action && (data.name || data.tickets))) {
+      return handleNewOrder(data);
+    }
+
+    return output({ success: false, error: 'Unrecognized action: ' + (data.action || 'empty') });
 
   } catch (err) {
     return ContentService
@@ -391,18 +489,22 @@ function doGet(e) {
     const action = e.parameter.action;
     const ss = getSS();
 
-    // 0. ตรวจสอบและเติมยอดบัตรรวม (TotalPrice) ให้อัตโนมัติหากมีแถวที่ว่างอยู่
+    // 0. ตรวจสอบและทำความสะอาดข้อมูลอัตโนมัติ
+    cleanGhostOrders(ss);
     backfillOrderTotals(ss);
-    // ลบตั๋วซ้ำใน Tickets sheet (ถ้ามีรายการเบิ้ล)
     cleanDuplicateTickets(ss);
-    // ซิงค์ตั๋วจาก Orders ไปยัง Tickets sheet อัตโนมัติหากมีตั๋วที่ขาดอยู่
     syncTicketsFromOrders(ss);
 
-    if (action === 'fixTotals' || action === 'backfillTotals') {
+    if (action === 'cleanGhost' || action === 'fixTotals' || action === 'backfillTotals') {
+      const ghostCount = cleanGhostOrders(ss);
       const fixedCount = backfillOrderTotals(ss);
       const cleanedCount = cleanDuplicateTickets(ss);
       const syncedCount = syncTicketsFromOrders(ss);
-      return output({ success: true, message: `อัปเดตยอดบัตรรวม (${fixedCount} รายการ), ลบตั๋วซ้ำ (${cleanedCount} รายการ) และซิงค์ตั๋ว (${syncedCount} ใบ) เรียบร้อยแล้ว` });
+      const slipsCount = formatAllSlipLinks(ss);
+      return output({
+        success: true,
+        message: `ลบแถวผีใน Orders (${ghostCount} แถว), อัปเดตยอดบัตรรวม (${fixedCount} รายการ), ลบตั๋วซ้ำ (${cleanedCount} รายการ), ซิงค์ตั๋ว (${syncedCount} ใบ) และจัดฟอร์แมตสลิป (${slipsCount} ช่อง) เรียบร้อยแล้ว`
+      });
     }
 
     // 1. ดึงเฉพาะการตั้งค่าส่วนกลาง (เช่น เช็คสถานะ Early Bird ในหน้าจองลูกค้า + ยอดจองกลางเพื่อคำนวณที่นั่งเหลือ)
@@ -509,6 +611,13 @@ function doGet(e) {
       for (let i = 1; i < oData.length; i++) {
         const row = oData[i];
         if (!row[idxOId - 1]) continue;
+        const oName = idxOName ? String(row[idxOName - 1] || '').trim() : '';
+        if (!oName || oName === '—') continue; // ข้ามแถวผีที่ไม่มีชื่อลูกค้า
+
+        const idxOStatus = findColIndex(oHeaders, ['สถานะ', 'status']) + 1;
+        const isOrderCancelled = (idxOStatus > 0 && String(row[idxOStatus - 1] || '').includes('ยกเลิก')) ||
+                                 (idxONote > 0 && String(row[idxONote - 1] || '').includes('[ยกเลิกแล้ว]'));
+
         let slipVal = (idxOSlip ? row[idxOSlip - 1] : '') || '';
         const fVal = (idxOSlip && oFormulas[i]) ? oFormulas[i][idxOSlip - 1] : '';
         if (fVal && String(fVal).indexOf('http') >= 0) {
@@ -518,7 +627,7 @@ function doGet(e) {
         const order = {
           orderId: row[idxOId - 1],
           timestamp: row[idxOTs - 1],
-          name: row[idxOName - 1],
+          name: oName,
           nickname: idxONick ? (row[idxONick - 1] || '') : '',
           phone: readCleanPhone(row[idxOPhone - 1]),
           email: idxOEmail ? row[idxOEmail - 1] : '',
@@ -531,7 +640,7 @@ function doGet(e) {
           slipUrl: slipVal,
           slipImage: slipVal,
           showDate: idxOShowDate ? row[idxOShowDate - 1] : '',
-          cancelled: false
+          cancelled: isOrderCancelled
         };
         orders.push(order);
         ordersMap[order.orderId] = order;
@@ -1303,6 +1412,7 @@ function syncTicketsFromOrders(ss) {
 
       const qty = idxOQty >= 0 ? Math.max(1, Number(oRow[idxOQty]) || 1) : 1;
       const name = idxOName >= 0 ? String(oRow[idxOName] || '').trim() : '';
+      if (!name || name === '—') continue; // ข้ามแถวผี ไม่ต้องเติมตั๋ว
       const nick = idxONick >= 0 ? String(oRow[idxONick] || '').trim() : '';
       const phone = idxOPhone >= 0 ? formatPhoneToWrite(oRow[idxOPhone]) : '';
       const type = idxOType >= 0 ? String(oRow[idxOType] || '').trim() : 'REGULAR';
@@ -1412,7 +1522,11 @@ function cleanDuplicateTickets(ss) {
     for (let i = tData.length - 1; i >= 1; i--) {
       const rowNum = i + 1;
       const rawTId = String(tData[i][idxTId] || '').trim();
-      if (!rawTId) continue;
+      if (!rawTId) {
+        ticketsSheet.deleteRow(rowNum);
+        deletedCount++;
+        continue;
+      }
       if (!rowsToKeep.has(rowNum)) {
         ticketsSheet.deleteRow(rowNum);
         deletedCount++;
@@ -1424,14 +1538,82 @@ function cleanDuplicateTickets(ss) {
   return deletedCount;
 }
 
+// ฟังก์ชันลบแถวผี/แถวว่าง/แถวซ้ำที่ตกค้างใน Orders sheet (เช่น แถวที่มีแต่เลขออร์เดอร์แต่ไม่มีชื่อ หรือยอดเป็น 0)
+function cleanGhostOrders(ss) {
+  let deletedCount = 0;
+  try {
+    const ordersSheet = ss.getSheetByName(SHEET_ORDERS);
+    if (!ordersSheet) return 0;
+    const oData = ordersSheet.getDataRange().getValues();
+    if (oData.length <= 1) return 0;
+    const oHeaders = oData[0] || [];
+
+    const idxOId = findColIndex(oHeaders, ['เลขที่คำสั่งซื้อ', 'orderid', 'order id']);
+    const idxOName = findColIndex(oHeaders, ['ชื่อ-นามสกุล', 'name', 'fullname']);
+    const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'phone', 'tel']);
+    const idxOQty = findColIndex(oHeaders, ['จำนวนใบ', 'qty']);
+    const idxOTotal = findColIndex(oHeaders, ['ราคารวม', 'ยอดเงินรวม (บาท)', 'ยอดรวม', 'total', 'totalprice', 'amount']);
+
+    if (idxOId < 0) return 0;
+
+    // รวบรวมออร์เดอร์ที่ถูกต้องสมบูรณ์ (มีชื่อ และไม่ใช่แถวว่าง)
+    const validOrders = new Set();
+    for (let i = 1; i < oData.length; i++) {
+      const oId = String(oData[i][idxOId] || '').trim();
+      const name = idxOName >= 0 ? String(oData[i][idxOName] || '').trim() : '';
+      if (oId && name && name !== '—') {
+        validOrders.add(oId);
+      }
+    }
+
+    // ลบแถวที่ผิดปกติจากล่างขึ้นบน
+    for (let i = oData.length - 1; i >= 1; i--) {
+      const rowNum = i + 1;
+      const oId = String(oData[i][idxOId] || '').trim();
+      const name = idxOName >= 0 ? String(oData[i][idxOName] || '').trim() : '';
+      const phone = idxOPhone >= 0 ? String(oData[i][idxOPhone] || '').trim() : '';
+      const qty = idxOQty >= 0 ? Number(oData[i][idxOQty]) || 0 : 0;
+      const total = idxOTotal >= 0 ? Number(oData[i][idxOTotal]) || 0 : 0;
+
+      // เงื่อนไขแถวผี:
+      // 1. ไม่มีเลขออร์เดอร์
+      // 2. ไม่มีชื่อ (หรือชื่อเป็น '—') และ (ยอดรวมเป็น 0 หรือไม่มีเบอร์ หรือจำนวนเป็น 0)
+      // 3. เป็นแถวซ้ำของ orderId เดียวกันที่ไม่มีชื่อ ในขณะที่มีแถวหลักที่มีชื่ออยู่แล้ว
+      const isNoId = !oId;
+      const isEmptyNameGhost = (!name || name === '—') && (total === 0 || !phone || phone === '—' || qty <= 0);
+      const isDuplicateGhost = (!name || name === '—') && validOrders.has(oId);
+
+      if (isNoId || isEmptyNameGhost || isDuplicateGhost) {
+        ordersSheet.deleteRow(rowNum);
+        deletedCount++;
+      }
+    }
+  } catch (err) {
+    console.warn('cleanGhostOrders error:', err);
+  }
+  return deletedCount;
+}
+
+// ฟังก์ชันล้างข้อมูลผีและจัดระเบียบชีททั้งหมด (สามารถกดรันใน Apps Script Editor ได้ทันที)
+function cleanGhostData() {
+  const ss = getSS();
+  const ghostCount = cleanGhostOrders(ss);
+  const dupCount = cleanDuplicateTickets(ss);
+  const totalsCount = backfillOrderTotals(ss);
+  const slipsCount = formatAllSlipLinks(ss);
+  const syncCount = syncTicketsFromOrders(ss);
+  Logger.log(`ลบแถวผีใน Orders: ${ghostCount} แถว, ลบตั๋วซ้ำ: ${dupCount} ใบ, เติมยอด: ${totalsCount}, แปลงสลิป: ${slipsCount}, ซิงค์ตั๋ว: ${syncCount}`);
+}
+
 // ฟังก์ชันสำหรับกดรันใน Google Apps Script Editor โดยตรง เพื่อเติมยอดรวม ลบตั๋วซ้ำ และแปลงสลิปทั้งหมด
 function fixOrderTotals() {
   const ss = getSS();
+  const countGhosts = cleanGhostOrders(ss);
   const countTotals = backfillOrderTotals(ss);
   const countSlips = formatAllSlipLinks(ss);
   const countCleaned = cleanDuplicateTickets(ss);
   const countTickets = syncTicketsFromOrders(ss);
-  Logger.log(`อัปเดตยอดรวม ${countTotals} แถว, ลบตั๋วซ้ำ ${countCleaned} ใบ, เติมตั๋ว ${countTickets} ใบ, แปลงสลิป ${countSlips} ช่อง`);
+  Logger.log(`ลบแถวผี ${countGhosts} แถว, อัปเดตยอดรวม ${countTotals} แถว, ลบตั๋วซ้ำ ${countCleaned} ใบ, เติมตั๋ว ${countTickets} ใบ, แปลงสลิป ${countSlips} ช่อง`);
 }
 
 function fixSlipLinks() {
@@ -1442,15 +1624,17 @@ function fixSlipLinks() {
 
 function fixTickets() {
   const ss = getSS();
+  const countGhosts = cleanGhostOrders(ss);
   const countCleaned = cleanDuplicateTickets(ss);
   const count = syncTicketsFromOrders(ss);
-  Logger.log(`ลบตั๋วที่ซ้ำกัน ${countCleaned} ใบ และซิงค์ตั๋วที่ขาด ${count} ใบ เรียบร้อยแล้ว`);
+  Logger.log(`ลบแถวผี ${countGhosts} แถว, ลบตั๋วที่ซ้ำกัน ${countCleaned} ใบ และซิงค์ตั๋วที่ขาด ${count} ใบ เรียบร้อยแล้ว`);
 }
 
 function fixDuplicates() {
   const ss = getSS();
+  const countGhosts = cleanGhostOrders(ss);
   const count = cleanDuplicateTickets(ss);
-  Logger.log(`ลบตั๋วที่ซ้ำกันในชีท Tickets เรียบร้อยแล้วทั้งหมด ${count} ใบ`);
+  Logger.log(`ลบแถวผี ${countGhosts} แถว และลบตั๋วที่ซ้ำกันในชีท Tickets เรียบร้อยแล้วทั้งหมด ${count} ใบ`);
 }
 
 

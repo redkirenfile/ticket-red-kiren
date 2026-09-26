@@ -1561,6 +1561,7 @@ function renderCustomerList(query) {
   const countEl = document.getElementById('modal-count');
 
   let tickets = Object.values(allTicketsCache);
+  if (currentModalFilter === 'all')       tickets = tickets.filter(t => !t.cancelled);
   if (currentModalFilter === 'checked')   tickets = tickets.filter(t => t.checkedIn && !t.cancelled);
   if (currentModalFilter === 'pending')   tickets = tickets.filter(t => !t.checkedIn && !t.cancelled);
   if (currentModalFilter === 'cancelled') tickets = tickets.filter(t => t.cancelled);
