@@ -1313,7 +1313,12 @@ function backfillOrderTotals(ss) {
         if (price <= 0 && !isQuota) {
           if (typeStr.includes('EARLY')) price = 500;
           else if (typeStr.includes('STUDENT')) price = 550;
-          else if (typeStr.includes('REGULAR')) price = 900;
+          else if (typeStr.includes('REGULAR')) {
+            price = 900;
+            if (qty >= 10) price = 700;
+            else if (qty >= 5) price = 800;
+            else if (qty >= 3) price = 850;
+          }
         }
 
         let calculatedTotal = isQuota ? 0 : qty * price;

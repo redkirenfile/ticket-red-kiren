@@ -8,7 +8,7 @@ const CONFIG = {
   showNameEn: 'Red Kiren File : Massacre at Mount Zero',
   venue: 'HostBBK (MRT ลุมพินี)',
   dates: '10–11 ตุลาคม 2569',
-  maxQty: 10,
+  maxQty: 20,
   slotCapacity: 200, // ← จำนวนที่นั่งสูงสุดต่อรอบ (ค่าพื้นฐาน 200 ที่นั่ง)
 
   // ⬇️ ใส่ URL ของ Google Apps Script ที่ deploy แล้วตรงนี้
@@ -23,7 +23,7 @@ const CONFIG = {
   ticketTypes: [
     { id:'earlybird',   name:'EARLYBIRD',   desc:'โปรโมชั่น Early Bird ราคาพิเศษ 500 บาท (จำกัด 50 ใบ/รอบ)', price:500, badge:'early',   badgeText:'🐦 EARLYBIRD',   available:true },
     { id:'student',     name:'STUDENT',     desc:'บัตรนักเรียน/นักศึกษา ราคาพิเศษ 550 บาท', price:550, badge:'student', badgeText:'🎓 STUDENT',     available:true },
-    { id:'regular',     name:'REGULAR',     desc:'บัตรราคาปกติ 900 บาท',               price:900, badge:'regular', badgeText:'🎭 REGULAR',     available:true },
+    { id:'regular',     name:'REGULAR',     desc:'บัตรราคาปกติ 900 บาท (3-4 ใบ เหลือ 850.- / 5-9 ใบ เหลือ 800.- / 10 ใบขึ้นไป เหลือ 700.-)', price:900, badge:'regular', badgeText:'🎭 REGULAR', available:true },
   ],
 
   bankAccount: {
@@ -800,29 +800,84 @@ function changeQty(delta) {
   renderPaymentQR();
 }
 
+// ─── TIERED PRICING (REGULAR TICKET) ──────────────────────────────────────
+function getRegularTierInfo(qty) {
+  if (qty >= 10) {
+    return {
+      unitPrice: 700,
+      discountPerTicket: 200,
+      tierLabel: 'ซื้อ 10 ใบขึ้นไป เหลือใบละ 700 บาท'
+    };
+  }
+  if (qty >= 5) {
+    return {
+      unitPrice: 800,
+      discountPerTicket: 100,
+      tierLabel: 'ซื้อ 5-9 ใบ เหลือใบละ 800 บาท'
+    };
+  }
+  if (qty >= 3) {
+    return {
+      unitPrice: 850,
+      discountPerTicket: 50,
+      tierLabel: 'ซื้อ 3-4 ใบ เหลือใบละ 850 บาท'
+    };
+  }
+  return {
+    unitPrice: 900,
+    discountPerTicket: 0,
+    tierLabel: null
+  };
+}
+
 function updateSummary() {
   const type = getActiveTicketType(state.selectedTypeId);
   if (!type) return;
-  const subtotal = type.price * state.qty;
-  const discount = state.discountAmount || 0;
-  const netTotal = Math.max(0, subtotal - discount);
+
+  const isRegular = (state.selectedTypeId === 'regular');
+  const tier = isRegular ? getRegularTierInfo(state.qty) : { unitPrice: type.price, discountPerTicket: 0, tierLabel: null };
+  const volumeDiscount = isRegular ? (tier.discountPerTicket * state.qty) : 0;
+  const promoDiscount = state.discountAmount || 0;
+  const baseSubtotal = type.price * state.qty;
+  const netTotal = Math.max(0, baseSubtotal - volumeDiscount - promoDiscount);
 
   const dateObj = CONFIG.schedule.find(d => d.id === state.selectedDateId);
   const showLabel = dateObj ? `${dateObj.dateLabel} · ${state.selectedSlot} น.` : '—';
   const showEl = document.getElementById('sum-show');
   if (showEl) showEl.textContent = showLabel;
-  document.getElementById('sum-type').textContent  = type.name;
-  document.getElementById('sum-price').textContent = `${fmt(type.price)} บาท`;
-  document.getElementById('sum-qty').textContent   = `${state.qty} ใบ`;
+  document.getElementById('sum-type').textContent = type.name;
 
+  const sumPriceEl = document.getElementById('sum-price');
+  if (sumPriceEl) {
+    if (volumeDiscount > 0) {
+      sumPriceEl.innerHTML = `<span style="color:#4ade80;font-weight:700;">${fmt(tier.unitPrice)} บาท</span> <span style="text-decoration:line-through;color:var(--muted);font-size:0.85em;margin-left:4px;">${fmt(type.price)}</span>`;
+    } else {
+      sumPriceEl.textContent = `${fmt(type.price)} บาท`;
+    }
+  }
+
+  document.getElementById('sum-qty').textContent = `${state.qty} ใบ`;
+
+  // แถวส่วนลดตามจำนวนบัตร (Volume Discount)
+  const volRow = document.getElementById('sum-volume-discount-row');
+  const volLabel = document.getElementById('sum-volume-discount-label');
+  const volVal = document.getElementById('sum-volume-discount');
+  if (volumeDiscount > 0 && volRow) {
+    volRow.style.display = 'flex';
+    if (volLabel) volLabel.textContent = `โปรโมชั่น (${tier.tierLabel})`;
+    if (volVal) volVal.textContent = `-${fmt(volumeDiscount)} บาท`;
+  } else if (volRow) {
+    volRow.style.display = 'none';
+  }
+
+  // แถวส่วนลดโค้ด
   const discountRow = document.getElementById('sum-discount-row');
   const discountLabel = document.getElementById('sum-discount-label');
   const discountVal = document.getElementById('sum-discount');
-
-  if (discount > 0 && discountRow) {
+  if (promoDiscount > 0 && discountRow) {
     discountRow.style.display = 'flex';
     if (discountLabel) discountLabel.textContent = `ส่วนลดโค้ด (${state.promoCode})`;
-    if (discountVal) discountVal.textContent = `-${fmt(discount)} บาท`;
+    if (discountVal) discountVal.textContent = `-${fmt(promoDiscount)} บาท`;
   } else if (discountRow) {
     discountRow.style.display = 'none';
   }
@@ -872,9 +927,13 @@ function renderPaymentQR() {
 function renderRecap() {
   const type = getActiveTicketType(state.selectedTypeId);
   if (!type) return;
-  const subtotal = type.price * state.qty;
-  const discount = state.discountAmount || 0;
-  const netTotal = Math.max(0, subtotal - discount);
+
+  const isRegular = (state.selectedTypeId === 'regular');
+  const tier = isRegular ? getRegularTierInfo(state.qty) : { unitPrice: type.price, discountPerTicket: 0, tierLabel: null };
+  const volumeDiscount = isRegular ? (tier.discountPerTicket * state.qty) : 0;
+  const promoDiscount = state.discountAmount || 0;
+  const baseSubtotal = type.price * state.qty;
+  const netTotal = Math.max(0, baseSubtotal - volumeDiscount - promoDiscount);
 
   document.getElementById('recap-type').textContent  = type.name;
   document.getElementById('recap-qty').textContent   = `${state.qty} ใบ`;
@@ -882,9 +941,16 @@ function renderRecap() {
 
   const recapDiscountBadge = document.getElementById('recap-discount-badge');
   if (recapDiscountBadge) {
-    if (discount > 0) {
+    const badges = [];
+    if (volumeDiscount > 0) {
+      badges.push(`🎉 โปรซื้อหลายใบ: ${tier.tierLabel} (ลด ${fmt(volumeDiscount)} บาท)`);
+    }
+    if (promoDiscount > 0) {
+      badges.push(`🏷️ ใช้โค้ด ${state.promoCode} ลด ${fmt(promoDiscount)} บาท`);
+    }
+    if (badges.length > 0) {
       recapDiscountBadge.style.display = 'block';
-      recapDiscountBadge.textContent = `🏷️ ใช้โค้ด ${state.promoCode} ลด ${fmt(discount)} บาท`;
+      recapDiscountBadge.innerHTML = badges.join('<br>');
     } else {
       recapDiscountBadge.style.display = 'none';
     }
@@ -924,15 +990,27 @@ async function submitOrder(event) {
   const showDateLabel = dateObj ? `${dateObj.dateLabel} · ${state.selectedSlot} น.` : '—';
   const tickets    = [];
 
-  const subtotal = type.price * state.qty;
-  const discount = state.discountAmount || 0;
-  const netTotal = Math.max(0, subtotal - discount);
+  const isRegular = (type.id === 'regular');
+  const tier = isRegular ? getRegularTierInfo(state.qty) : { unitPrice: type.price, discountPerTicket: 0, tierLabel: null };
+  const volumeDiscount = isRegular ? (tier.discountPerTicket * state.qty) : 0;
+  const promoDiscount = state.discountAmount || 0;
+  const totalDiscount = volumeDiscount + promoDiscount;
+  const baseSubtotal = type.price * state.qty;
+  const netTotal = Math.max(0, baseSubtotal - totalDiscount);
+  const ticketUnitPrice = tier.unitPrice;
 
-  // Remark when promo code is used so it clearly stands out in Google Sheets หมายเหตุ
+  // Remark when promo code or volume discount is used so it clearly stands out in Google Sheets หมายเหตุ
   let fullNote = baseNote;
-  if (discount > 0 && state.promoCode) {
-    const promoNote = `[ใช้โค้ดส่วนลด: ${state.promoCode} ลด ${fmt(discount)} บาท | ยอดเดิม ${fmt(subtotal)} บาท สุทธิ ${fmt(netTotal)} บาท]`;
-    fullNote = fullNote ? `${fullNote} ${promoNote}` : promoNote;
+  const promoTags = [];
+  if (volumeDiscount > 0) {
+    promoTags.push(`[${tier.tierLabel}: ลด ${fmt(volumeDiscount)} บาท]`);
+  }
+  if (promoDiscount > 0 && state.promoCode) {
+    promoTags.push(`[ใช้โค้ดส่วนลด: ${state.promoCode} ลด ${fmt(promoDiscount)} บาท]`);
+  }
+  if (promoTags.length > 0) {
+    const summaryNote = `${promoTags.join(' ')} [ยอดเดิม ${fmt(baseSubtotal)} บาท สุทธิ ${fmt(netTotal)} บาท]`;
+    fullNote = fullNote ? `${fullNote} ${summaryNote}` : summaryNote;
   }
 
   for (let i = 1; i <= state.qty; i++) {
@@ -952,9 +1030,9 @@ async function submitOrder(event) {
       showDateId:  state.selectedDateId,
       showSlot:    state.selectedSlot,
       showDate:    showDateLabel,
-      pricePerTicket: type.price,
-      subtotal,
-      discount,
+      pricePerTicket: ticketUnitPrice,
+      subtotal:    baseSubtotal,
+      discount:    totalDiscount,
       promoCode:   state.promoCode || null,
       total:       netTotal,
     });
@@ -970,10 +1048,10 @@ async function submitOrder(event) {
     slipImage:      state.slipBase64,
     typeId:         type.id,
     typeName:       type.name,
-    pricePerTicket: type.price,
+    pricePerTicket: ticketUnitPrice,
     qty:            state.qty,
-    subtotal:       subtotal,
-    discount:       discount,
+    subtotal:       baseSubtotal,
+    discount:       totalDiscount,
     promoCode:      state.promoCode || null,
     total:          netTotal,
     showDateId:     state.selectedDateId,
