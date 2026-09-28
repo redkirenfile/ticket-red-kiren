@@ -549,11 +549,10 @@ function doGet(e) {
       settings["soldCounts"] = soldCounts;
       settings["soldCountsByType"] = soldCountsByType;
 
-      // ดึงรายชื่อเบอร์โทรที่เคยใช้โค้ดส่วนลด NMC600 / FB750 / FC750 (เฉพาะออเดอร์ที่ไม่ถูกยกเลิก)
+      // ดึงรายชื่อเบอร์โทรที่เคยใช้โค้ดส่วนลด NMC600 / FB750 (เฉพาะออเดอร์ที่ไม่ถูกยกเลิก)
       const usedPromoPhones = {
         'NMC600': [],
-        'FB750': [],
-        'FC750': []
+        'FB750': []
       };
       const ordersSheet = ss.getSheetByName(SHEET_ORDERS);
       if (ordersSheet) {
@@ -576,13 +575,13 @@ function doGet(e) {
           const rowPromo = idxOPromo >= 0 ? String(row[idxOPromo] || '').trim().toUpperCase() : '';
           const rowNote = idxONote >= 0 ? String(row[idxONote] || '').toUpperCase() : '';
 
-          if (rowPromo === 'NMC600' || rowNote.includes('NMC600')) {
-            if (!usedPromoPhones['NMC600'].includes(p)) usedPromoPhones['NMC600'].push(p);
-          }
-          if (rowPromo === 'FB750' || rowPromo === 'FC750' || rowNote.includes('FB750') || rowNote.includes('FC750')) {
-            if (!usedPromoPhones['FB750'].includes(p)) usedPromoPhones['FB750'].push(p);
-            if (!usedPromoPhones['FC750'].includes(p)) usedPromoPhones['FC750'].push(p);
-          }
+          ['NMC600', 'FB750'].forEach(c => {
+            if (rowPromo === c || rowNote.includes(c)) {
+              if (!usedPromoPhones[c].includes(p)) {
+                usedPromoPhones[c].push(p);
+              }
+            }
+          });
         }
       }
       settings["usedPromoPhones"] = usedPromoPhones;
@@ -598,8 +597,6 @@ function doGet(e) {
       if (!promoCode || !phone) {
         return output({ success: false, error: 'Missing code or phone parameter' });
       }
-
-      const codesToCheck = (promoCode === 'FB750' || promoCode === 'FC750') ? ['FB750', 'FC750'] : [promoCode];
 
       let alreadyUsed = false;
       const ordersSheet = ss.getSheetByName(SHEET_ORDERS);
@@ -621,7 +618,7 @@ function doGet(e) {
           if (p && p === phone) {
             const rowPromo = idxOPromo >= 0 ? String(row[idxOPromo] || '').trim().toUpperCase() : '';
             const rowNote = idxONote >= 0 ? String(row[idxONote] || '').toUpperCase() : '';
-            if (codesToCheck.some(c => rowPromo === c || rowNote.includes(c))) {
+            if (rowPromo === promoCode || rowNote.includes(promoCode)) {
               alreadyUsed = true;
               break;
             }
@@ -1065,8 +1062,7 @@ function handleNewOrder(data) {
 
   // ── ตรวจสอบโค้ดส่วนลดซ้ำตามเบอร์โทรศัพท์ (ลูกค้าคนเดิมเบอร์เดิมไม่สามารถใช้โค้ดซ้ำได้) ──
   const inputPromo = (data.promoCode || '').toString().trim().toUpperCase();
-  if (inputPromo === 'NMC600' || inputPromo === 'FB750' || inputPromo === 'FC750') {
-    const codesToCheck = (inputPromo === 'FB750' || inputPromo === 'FC750') ? ['FB750', 'FC750'] : [inputPromo];
+  if (inputPromo === 'NMC600' || inputPromo === 'FB750') {
     const ordersSheetCheck = ss.getSheetByName(SHEET_ORDERS);
     if (ordersSheetCheck) {
       const oCheckData = ordersSheetCheck.getDataRange().getValues();
@@ -1087,7 +1083,7 @@ function handleNewOrder(data) {
         if (rowPhone && targetPhone && rowPhone === targetPhone) {
           const rowPromo = idxOPromo >= 0 ? String(row[idxOPromo] || '').trim().toUpperCase() : '';
           const rowNote = idxONote >= 0 ? String(row[idxONote] || '').toUpperCase() : '';
-          if (codesToCheck.some(c => rowPromo === c || rowNote.includes(c))) {
+          if (rowPromo === inputPromo || rowNote.includes(inputPromo)) {
             return ContentService
               .createTextOutput(JSON.stringify({ 
                 success: false, 
@@ -1431,7 +1427,7 @@ function backfillOrderTotals(ss) {
           const noteStr = String(row[idxNote] || '');
           if (noteStr.includes('NMC600')) {
             calculatedTotal = Math.max(0, calculatedTotal - 300);
-          } else if (noteStr.includes('FB750') || noteStr.includes('FC750')) {
+          } else if (noteStr.includes('FB750')) {
             calculatedTotal = Math.max(0, calculatedTotal - 150);
           } else if (noteStr.includes('ลด 300') || noteStr.includes('NMC300')) {
             calculatedTotal = Math.max(0, calculatedTotal - 300);
