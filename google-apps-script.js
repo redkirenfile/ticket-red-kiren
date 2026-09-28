@@ -549,7 +549,89 @@ function doGet(e) {
       settings["soldCounts"] = soldCounts;
       settings["soldCountsByType"] = soldCountsByType;
 
+      // ดึงรายชื่อเบอร์โทรที่เคยใช้โค้ดส่วนลด NMC600 / FB750 (เฉพาะออเดอร์ที่ไม่ถูกยกเลิก)
+      const usedPromoPhones = {
+        'NMC600': [],
+        'FB750': []
+      };
+      const ordersSheet = ss.getSheetByName(SHEET_ORDERS);
+      if (ordersSheet) {
+        const oData = ordersSheet.getDataRange().getValues();
+        const oHeaders = oData[0] || [];
+        const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'phone', 'tel', 'mobile']);
+        const idxOPromo = findColIndex(oHeaders, ['โค้ดส่วนลด', 'promocode', 'promo code', 'promo']);
+        const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note', 'remark']);
+        const idxOStatus = findColIndex(oHeaders, ['สถานะ', 'status', 'สถานะออร์เดอร์']);
+
+        for (let i = 1; i < oData.length; i++) {
+          const row = oData[i];
+          const isCancelled = (idxOStatus >= 0 && String(row[idxOStatus] || '').includes('ยกเลิก')) ||
+                              (idxONote >= 0 && String(row[idxONote] || '').includes('[ยกเลิกแล้ว]'));
+          if (isCancelled) continue;
+
+          const p = idxOPhone >= 0 ? readCleanPhone(row[idxOPhone]) : '';
+          if (!p) continue;
+
+          const rowPromo = idxOPromo >= 0 ? String(row[idxOPromo] || '').trim().toUpperCase() : '';
+          const rowNote = idxONote >= 0 ? String(row[idxONote] || '').toUpperCase() : '';
+
+          ['NMC600', 'FB750'].forEach(c => {
+            if (rowPromo === c || rowNote.includes(c)) {
+              if (!usedPromoPhones[c].includes(p)) {
+                usedPromoPhones[c].push(p);
+              }
+            }
+          });
+        }
+      }
+      settings["usedPromoPhones"] = usedPromoPhones;
+
       return output(settings);
+    }
+
+    // 1.1 ตรวจสอบว่าเบอร์โทรนี้เคยใช้โค้ดส่วนลดนี้หรือยัง
+    if (action === 'checkPromo') {
+      const promoCode = (e.parameter.code || '').trim().toUpperCase();
+      const phone = readCleanPhone(e.parameter.phone || '');
+
+      if (!promoCode || !phone) {
+        return output({ success: false, error: 'Missing code or phone parameter' });
+      }
+
+      let alreadyUsed = false;
+      const ordersSheet = ss.getSheetByName(SHEET_ORDERS);
+      if (ordersSheet) {
+        const oData = ordersSheet.getDataRange().getValues();
+        const oHeaders = oData[0] || [];
+        const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'phone', 'tel', 'mobile']);
+        const idxOPromo = findColIndex(oHeaders, ['โค้ดส่วนลด', 'promocode', 'promo code', 'promo']);
+        const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note', 'remark']);
+        const idxOStatus = findColIndex(oHeaders, ['สถานะ', 'status', 'สถานะออร์เดอร์']);
+
+        for (let i = 1; i < oData.length; i++) {
+          const row = oData[i];
+          const isCancelled = (idxOStatus >= 0 && String(row[idxOStatus] || '').includes('ยกเลิก')) ||
+                              (idxONote >= 0 && String(row[idxONote] || '').includes('[ยกเลิกแล้ว]'));
+          if (isCancelled) continue;
+
+          const p = idxOPhone >= 0 ? readCleanPhone(row[idxOPhone]) : '';
+          if (p && p === phone) {
+            const rowPromo = idxOPromo >= 0 ? String(row[idxOPromo] || '').trim().toUpperCase() : '';
+            const rowNote = idxONote >= 0 ? String(row[idxONote] || '').toUpperCase() : '';
+            if (rowPromo === promoCode || rowNote.includes(promoCode)) {
+              alreadyUsed = true;
+              break;
+            }
+          }
+        }
+      }
+
+      return output({
+        success: true,
+        promoCode: promoCode,
+        phone: phone,
+        alreadyUsed: alreadyUsed
+      });
     }
     
     // 2. ดึงตั๋วและประวัติทั้งหมดเพื่อทำ Cloud Sync ในหลังบ้าน (Staff)
@@ -977,6 +1059,42 @@ function doGet(e) {
 // ─── HANDLE NEW ORDER ─────────────────────────────────────────────────────
 function handleNewOrder(data) {
   const ss = getSS();
+
+  // ── ตรวจสอบโค้ดส่วนลดซ้ำตามเบอร์โทรศัพท์ (ลูกค้าคนเดิมเบอร์เดิมไม่สามารถใช้โค้ดซ้ำได้) ──
+  const inputPromo = (data.promoCode || '').toString().trim().toUpperCase();
+  if (inputPromo === 'NMC600' || inputPromo === 'FB750') {
+    const ordersSheetCheck = ss.getSheetByName(SHEET_ORDERS);
+    if (ordersSheetCheck) {
+      const oCheckData = ordersSheetCheck.getDataRange().getValues();
+      const oHeaders = oCheckData[0] || [];
+      const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'phone', 'tel', 'mobile']);
+      const idxOPromo = findColIndex(oHeaders, ['โค้ดส่วนลด', 'promocode', 'promo code', 'promo']);
+      const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note', 'remark']);
+      const idxOStatus = findColIndex(oHeaders, ['สถานะ', 'status', 'สถานะออร์เดอร์']);
+
+      const targetPhone = readCleanPhone(data.phone);
+      for (let i = 1; i < oCheckData.length; i++) {
+        const row = oCheckData[i];
+        const isCancelled = (idxOStatus >= 0 && String(row[idxOStatus] || '').includes('ยกเลิก')) ||
+                            (idxONote >= 0 && String(row[idxONote] || '').includes('[ยกเลิกแล้ว]'));
+        if (isCancelled) continue;
+
+        const rowPhone = idxOPhone >= 0 ? readCleanPhone(row[idxOPhone]) : '';
+        if (rowPhone && targetPhone && rowPhone === targetPhone) {
+          const rowPromo = idxOPromo >= 0 ? String(row[idxOPromo] || '').trim().toUpperCase() : '';
+          const rowNote = idxONote >= 0 ? String(row[idxONote] || '').toUpperCase() : '';
+          if (rowPromo === inputPromo || rowNote.includes(inputPromo)) {
+            return ContentService
+              .createTextOutput(JSON.stringify({ 
+                success: false, 
+                error: `เบอร์โทรศัพท์ ${targetPhone} เคยใช้สิทธิ์โค้ดส่วนลด ${inputPromo} ไปแล้ว (จำกัด 1 สิทธิ์ต่อ 1 เบอร์โทรศัพท์)` 
+              }))
+              .setMimeType(ContentService.MimeType.JSON);
+          }
+        }
+      }
+    }
+  }
   
   // ── บันทึกไฟล์รูปสลิปลง Google Drive (ถ้ามีแนบมา) ──
   let slipUrl = '—';
@@ -1304,10 +1422,14 @@ function backfillOrderTotals(ss) {
         }
 
         let calculatedTotal = isQuota ? 0 : qty * price;
-        // ตรวจสอบส่วนลดเพิ่มเติมจากหมายเหตุ (เช่น NMC300)
+        // ตรวจสอบส่วนลดเพิ่มเติมจากหมายเหตุ (เช่น NMC600, FB750, NMC300)
         if (idxNote >= 0) {
           const noteStr = String(row[idxNote] || '');
-          if (noteStr.includes('ลด 300') || noteStr.includes('NMC300')) {
+          if (noteStr.includes('NMC600')) {
+            calculatedTotal = Math.max(0, calculatedTotal - 300);
+          } else if (noteStr.includes('FB750')) {
+            calculatedTotal = Math.max(0, calculatedTotal - 150);
+          } else if (noteStr.includes('ลด 300') || noteStr.includes('NMC300')) {
             calculatedTotal = Math.max(0, calculatedTotal - 300);
           }
         }
