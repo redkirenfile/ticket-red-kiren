@@ -1328,7 +1328,10 @@ function backfillOrderTotals(ss) {
           if (noteStr.includes('NMC600')) {
             calculatedTotal = Math.max(0, calculatedTotal - 300);
           } else if (noteStr.includes('FB750')) {
-            calculatedTotal = Math.max(0, calculatedTotal - 150);
+            // โค้ด FB750 ไม่สามารถใช้กับโปรโมชั่น 10 ใบขึ้นไปได้
+            if (qty < 10) {
+              calculatedTotal = Math.max(0, calculatedTotal - 150);
+            }
           } else if (noteStr.includes('ลด 300') || noteStr.includes('NMC300')) {
             calculatedTotal = Math.max(0, calculatedTotal - 300);
           }

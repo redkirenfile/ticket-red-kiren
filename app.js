@@ -322,6 +322,12 @@ function goTo(view) {
       return;
     }
 
+    if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 10) {
+      removePromoCode();
+      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบขึ้นไปได้ (โค้ดถูกยกเลิกแล้ว)', 'warning');
+      return;
+    }
+
     if (state.selectedTypeId === 'earlybird' && state.selectedDateId && state.selectedSlot) {
       const ebRem = getEarlybirdRemainingSeats(state.selectedDateId, state.selectedSlot);
       if (ebRem <= 0) {
@@ -563,6 +569,9 @@ function selectType(typeId) {
     if (promo.applicableType && promo.applicableType !== typeId) {
       removePromoCode();
       showToast('⚠️ โค้ดส่วนลดใช้ได้เฉพาะบัตร REGULAR จึงถูกยกเลิก', 'warning');
+    } else if (state.promoCode === 'FB750' && typeId === 'regular' && state.qty >= 10) {
+      removePromoCode();
+      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่น 10 ใบขึ้นไป จึงถูกยกเลิก', 'warning');
     }
   }
   document.querySelectorAll('.ticket-type-card').forEach(el => el.classList.remove('selected'));
@@ -715,7 +724,7 @@ const PROMO_CODES = {
     code: 'FB750',
     discount: 150,
     applicableType: 'regular',
-    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ)'
+    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 10 ใบขึ้นไป)'
   }
 };
 
@@ -763,6 +772,17 @@ function applyPromoCode() {
     }
   }
 
+  // 2. เงื่อนไขพิเศษ: โค้ด FB750 ไม่สามารถใช้กับโปร 10 ใบขึ้นไปได้
+  if (promo.code === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 10) {
+    state.promoCode = null;
+    state.discountAmount = 0;
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#f87171';
+    msgEl.textContent = '⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบขึ้นไปได้ (เนื่องจากได้รับราคาพิเศษ 700 บาทแล้ว)';
+    updateSummary();
+    return;
+  }
+
   state.promoCode = promo.code;
   state.discountAmount = promo.discount;
   input.value = promo.code;
@@ -796,6 +816,13 @@ function changeQty(delta) {
   document.getElementById('qty-display').textContent = state.qty;
   document.getElementById('qty-minus').disabled = state.qty <= 1;
   document.getElementById('qty-plus').disabled  = state.qty >= maxBuy;
+
+  // หากใช้โค้ด FB750 อยู่ แล้วจำนวนเพิ่มเป็น 10 ใบขึ้นไป ให้ยกเลิกโค้ด FB750 อัตโนมัติ
+  if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 10) {
+    removePromoCode();
+    showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบขึ้นไป จึงถูกยกเลิก', 'warning');
+  }
+
   updateSummary();
   renderPaymentQR();
 }
@@ -983,6 +1010,11 @@ async function submitOrder(event) {
     if (ebRemaining < state.qty) {
       return showToast(`❌ โควต้าบัตร Early Bird สำหรับรอบนี้เหลือเพียง ${ebRemaining} ใบ`, 'error');
     }
+  }
+
+  // Check FB750 with 10+ tickets
+  if (state.promoCode === 'FB750' && type.id === 'regular' && state.qty >= 10) {
+    return showToast('❌ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบขึ้นไปได้', 'error');
   }
 
   const orderId    = generateOrderId();
