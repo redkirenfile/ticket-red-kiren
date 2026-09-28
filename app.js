@@ -8,7 +8,7 @@ const CONFIG = {
   showNameEn: 'Red Kiren File : Massacre at Mount Zero',
   venue: 'HostBBK (MRT ลุมพินี)',
   dates: '10–11 ตุลาคม 2569',
-  maxQty: 20,
+  maxQty: 10,
   slotCapacity: 200, // ← จำนวนที่นั่งสูงสุดต่อรอบ (ค่าพื้นฐาน 200 ที่นั่ง)
 
   // ⬇️ ใส่ URL ของ Google Apps Script ที่ deploy แล้วตรงนี้
@@ -23,7 +23,7 @@ const CONFIG = {
   ticketTypes: [
     { id:'earlybird',   name:'EARLYBIRD',   desc:'โปรโมชั่น Early Bird ราคาพิเศษ 500 บาท (จำกัด 50 ใบ/รอบ)', price:500, badge:'early',   badgeText:'🐦 EARLYBIRD',   available:true },
     { id:'student',     name:'STUDENT',     desc:'บัตรนักเรียน/นักศึกษา ราคาพิเศษ 550 บาท', price:550, badge:'student', badgeText:'🎓 STUDENT',     available:true },
-    { id:'regular',     name:'REGULAR',     desc:'บัตรราคาปกติ 900 บาท (3-4 ใบ เหลือ 850.- / 5-9 ใบ เหลือ 800.- / 10 ใบขึ้นไป เหลือ 700.-)', price:900, badge:'regular', badgeText:'🎭 REGULAR', available:true },
+    { id:'regular',     name:'REGULAR',     desc:'บัตรราคาปกติ 900 บาท (3-4 ใบ เหลือ 850.- / 5-9 ใบ เหลือ 800.- / 10 ใบ เหลือ 700.-)', price:900, badge:'regular', badgeText:'🎭 REGULAR', available:true },
   ],
 
   bankAccount: {
@@ -324,7 +324,7 @@ function goTo(view) {
 
     if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 10) {
       removePromoCode();
-      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบขึ้นไปได้ (โค้ดถูกยกเลิกแล้ว)', 'warning');
+      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบได้ (โค้ดถูกยกเลิกแล้ว)', 'warning');
       return;
     }
 
@@ -571,7 +571,7 @@ function selectType(typeId) {
       showToast('⚠️ โค้ดส่วนลดใช้ได้เฉพาะบัตร REGULAR จึงถูกยกเลิก', 'warning');
     } else if (state.promoCode === 'FB750' && typeId === 'regular' && state.qty >= 10) {
       removePromoCode();
-      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่น 10 ใบขึ้นไป จึงถูกยกเลิก', 'warning');
+      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่น 10 ใบ จึงถูกยกเลิก', 'warning');
     }
   }
   document.querySelectorAll('.ticket-type-card').forEach(el => el.classList.remove('selected'));
@@ -724,7 +724,7 @@ const PROMO_CODES = {
     code: 'FB750',
     discount: 150,
     applicableType: 'regular',
-    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 10 ใบขึ้นไป)'
+    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 10 ใบ)'
   }
 };
 
@@ -772,13 +772,13 @@ function applyPromoCode() {
     }
   }
 
-  // 2. เงื่อนไขพิเศษ: โค้ด FB750 ไม่สามารถใช้กับโปร 10 ใบขึ้นไปได้
+  // 2. เงื่อนไขพิเศษ: โค้ด FB750 ไม่สามารถใช้กับโปร 10 ใบได้
   if (promo.code === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 10) {
     state.promoCode = null;
     state.discountAmount = 0;
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
-    msgEl.textContent = '⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบขึ้นไปได้ (เนื่องจากได้รับราคาพิเศษ 700 บาทแล้ว)';
+    msgEl.textContent = '⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบได้ (เนื่องจากได้รับราคาพิเศษ 700 บาทแล้ว)';
     updateSummary();
     return;
   }
@@ -817,10 +817,10 @@ function changeQty(delta) {
   document.getElementById('qty-minus').disabled = state.qty <= 1;
   document.getElementById('qty-plus').disabled  = state.qty >= maxBuy;
 
-  // หากใช้โค้ด FB750 อยู่ แล้วจำนวนเพิ่มเป็น 10 ใบขึ้นไป ให้ยกเลิกโค้ด FB750 อัตโนมัติ
+  // หากใช้โค้ด FB750 อยู่ แล้วจำนวนเพิ่มเป็น 10 ใบ ให้ยกเลิกโค้ด FB750 อัตโนมัติ
   if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 10) {
     removePromoCode();
-    showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบขึ้นไป จึงถูกยกเลิก', 'warning');
+    showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบ จึงถูกยกเลิก', 'warning');
   }
 
   updateSummary();
@@ -833,7 +833,7 @@ function getRegularTierInfo(qty) {
     return {
       unitPrice: 700,
       discountPerTicket: 200,
-      tierLabel: 'ซื้อ 10 ใบขึ้นไป เหลือใบละ 700 บาท'
+      tierLabel: 'ซื้อ 10 ใบ เหลือใบละ 700 บาท'
     };
   }
   if (qty >= 5) {
@@ -1012,9 +1012,9 @@ async function submitOrder(event) {
     }
   }
 
-  // Check FB750 with 10+ tickets
+  // Check FB750 with 10 tickets
   if (state.promoCode === 'FB750' && type.id === 'regular' && state.qty >= 10) {
-    return showToast('❌ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบขึ้นไปได้', 'error');
+    return showToast('❌ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบได้', 'error');
   }
 
   const orderId    = generateOrderId();
