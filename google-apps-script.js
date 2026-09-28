@@ -495,6 +495,7 @@ function doGet(e) {
     backfillOrderTotals(ss);
     cleanDuplicateTickets(ss);
     syncTicketsFromOrders(ss);
+    formatAllSlipLinks(ss);
 
     if (action === 'cleanGhost' || action === 'fixTotals' || action === 'backfillTotals') {
       const fixedMojibake = fixMojibakeStatuses(ss);
@@ -1338,7 +1339,7 @@ function backfillOrderTotals(ss) {
   return count;
 }
 
-// ฟังก์ชันแปลงลิงก์สลิปทั้งหมดในชีท Orders และ Tickets ให้แสดงผลเป็นปุ่มข้อความ "📄 ดูรูปสลิป"
+// ฟังก์ชันแปลงลิงก์สลิปทั้งหมดในชีท Orders และ Tickets ให้แสดงผลเป็นปุ่มข้อความ "📄 ดูรูปสลิป" และแก้สลิปที่เป็นตัวต่างดาว
 function formatAllSlipLinks(ss) {
   let count = 0;
   try {
@@ -1346,6 +1347,7 @@ function formatAllSlipLinks(ss) {
       const sheet = ss.getSheetByName(sheetName);
       if (!sheet) return;
       const data = sheet.getDataRange().getValues();
+      const formulas = sheet.getDataRange().getFormulas();
       if (data.length <= 1) return;
       const headers = data[0] || [];
       const slipIdx = findColIndex(headers, ['สลิปการโอนเงิน', 'สลิปโอนเงิน', 'สลิป', 'หลักฐานการโอน', 'slipurl', 'slip url', 'slip']);
@@ -1353,9 +1355,23 @@ function formatAllSlipLinks(ss) {
 
       for (let i = 1; i < data.length; i++) {
         const val = String(data[i][slipIdx] || '').trim();
+        const formula = String(formulas[i][slipIdx] || '').trim();
+
+        // 1. ถ้าเป็น URL ดิบ ให้แปลงเป็น HYPERLINK
         if (val.startsWith('http://') || val.startsWith('https://')) {
           sheet.getRange(i + 1, slipIdx + 1).setFormula(`=HYPERLINK("${val}", "📄 ดูรูปสลิป")`);
           count++;
+        }
+        // 2. ถ้าเป็นสูตร HYPERLINK แต่ข้อความแสดงผลมีตัวต่างดาว (เช่น ü, ‡, ∏, â) หรือไม่ใช่ "📄 ดูรูปสลิป"
+        else if (formula.toUpperCase().startsWith('=HYPERLINK')) {
+          const match = formula.match(/=HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (match && match[1]) {
+            const url = match[1];
+            if (val.includes('‡') || val.includes('∏') || val.includes('â') || val.includes('') || !val.includes('สลิป')) {
+              sheet.getRange(i + 1, slipIdx + 1).setFormula(`=HYPERLINK("${url}", "📄 ดูรูปสลิป")`);
+              count++;
+            }
+          }
         }
       }
     });
