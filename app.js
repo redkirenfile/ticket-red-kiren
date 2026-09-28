@@ -21,9 +21,9 @@ const CONFIG = {
   ],
 
   ticketTypes: [
-    { id:'earlybird',   name:'EARLYBIRD',   desc:'โปรโมชั่น Early Bird ราคาพิเศษ 500 บาท (จำกัด 50 ใบ/รอบ)', price:500, badge:'early',   badgeText:'🐦 EARLYBIRD',   available:true },
-    { id:'student',     name:'STUDENT',     desc:'บัตรนักเรียน/นักศึกษา ราคาพิเศษ 550 บาท', price:550, badge:'student', badgeText:'🎓 STUDENT',     available:true },
-    { id:'regular',     name:'REGULAR',     desc:'บัตรราคาปกติ 900 บาท (3-4 ใบ เหลือ 850.- / 5-9 ใบ เหลือ 800.- / 10 ใบ เหลือ 700.-)', price:900, badge:'regular', badgeText:'🎭 REGULAR', available:true },
+    { id:'earlybird',   name:'EARLYBIRD',   desc:'บัตร Early Bird (จำกัด 50 ใบ/รอบ)', price:500, badge:'early',   badgeText:'🐦 EARLYBIRD',   available:true },
+    { id:'student',     name:'STUDENT',     desc:'บัตรนักเรียน / นักศึกษา', price:550, badge:'student', badgeText:'🎓 STUDENT',     available:true },
+    { id:'regular',     name:'REGULAR',     desc:'บัตรปกติ', price:900, badge:'regular', badgeText:'🎭 REGULAR', available:true },
   ],
 
   bankAccount: {
