@@ -549,47 +549,22 @@ function doGet(e) {
       settings["soldCounts"] = soldCounts;
       settings["soldCountsByType"] = soldCountsByType;
 
-      // ดึงรายชื่อเบอร์โทรที่เคยใช้โค้ดส่วนลด NMC600 / FB750 (เฉพาะออเดอร์ที่ไม่ถูกยกเลิก)
-      const usedPromoPhones = {
+      // ยกเลิกการจำกัดสิทธิ์เบอร์ซ้ำ (คืนค่าว่างเพื่อให้เครื่องที่แคชไว้ไม่บล็อกเบอร์)
+      settings["usedPromoPhones"] = {
         'NMC600': [],
         'FB750': []
       };
-      const ordersSheet = ss.getSheetByName(SHEET_ORDERS);
-      if (ordersSheet) {
-        const oData = ordersSheet.getDataRange().getValues();
-        const oHeaders = oData[0] || [];
-        const idxOPhone = findColIndex(oHeaders, ['เบอร์โทร', 'phone', 'tel', 'mobile']);
-        const idxOPromo = findColIndex(oHeaders, ['โค้ดส่วนลด', 'promocode', 'promo code', 'promo']);
-        const idxONote = findColIndex(oHeaders, ['หมายเหตุ', 'note', 'remark']);
-        const idxOStatus = findColIndex(oHeaders, ['สถานะ', 'status', 'สถานะออร์เดอร์']);
-
-        for (let i = 1; i < oData.length; i++) {
-          const row = oData[i];
-          const isCancelled = (idxOStatus >= 0 && String(row[idxOStatus] || '').includes('ยกเลิก')) ||
-                              (idxONote >= 0 && String(row[idxONote] || '').includes('[ยกเลิกแล้ว]'));
-          if (isCancelled) continue;
-
-          const p = idxOPhone >= 0 ? readCleanPhone(row[idxOPhone]) : '';
-          if (!p) continue;
-
-          const rowPromo = idxOPromo >= 0 ? String(row[idxOPromo] || '').trim().toUpperCase() : '';
-          const rowNote = idxONote >= 0 ? String(row[idxONote] || '').toUpperCase() : '';
-
-          ['NMC600', 'FB750'].forEach(c => {
-            if (rowPromo === c || rowNote.includes(c)) {
-              if (!usedPromoPhones[c].includes(p)) {
-                usedPromoPhones[c].push(p);
-              }
-            }
-          });
-        }
-      }
-      settings["usedPromoPhones"] = usedPromoPhones;
 
       return output(settings);
     }
-    
-    // 2. ดึงตั๋วและประวัติทั้งหมดเพื่อทำ Cloud Sync ในหลังบ้าน (Staff)
+
+    // กรณีมีเครื่องลูกค้าที่ยังแคชโค้ดเก่าแล้วยิง checkPromo มา ให้ตอบว่าไม่เคยใช้เสมอ
+    if (action === 'checkPromo') {
+      return output({
+        success: true,
+        alreadyUsed: false
+      });
+    }
     if (action === 'getAll') {
       const settingsSheet = getOrCreateSettings(ss);
       const sData = settingsSheet.getDataRange().getValues();

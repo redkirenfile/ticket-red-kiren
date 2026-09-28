@@ -118,9 +118,7 @@ async function fetchGlobalConfig() {
           if (data.soldCountsByType) {
             localStorage.setItem('theater_sold_counts_by_type', JSON.stringify(data.soldCountsByType));
           }
-          if (data.usedPromoPhones) {
-            localStorage.setItem('theater_used_promo_phones', JSON.stringify(data.usedPromoPhones));
-          }
+          localStorage.removeItem('theater_used_promo_phones');
           // บันทึกค่า Capacity ที่ปรับปรุงจาก Sheets ลงใน localStorage 'theater_stock'
           const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
           Object.keys(data).forEach(key => {
@@ -1321,6 +1319,13 @@ function showToast(msg, type = '') {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  // Clear any promo phone caches
+  try {
+    localStorage.removeItem('theater_used_promo_phones');
+    const oldWarn = document.getElementById('phone-promo-msg');
+    if (oldWarn) oldWarn.remove();
+  } catch (e) {}
+
   // Auto-migrate legacy stock values to 200
   try {
     const stock = JSON.parse(localStorage.getItem('theater_stock') || '{}');
