@@ -710,6 +710,12 @@ const PROMO_CODES = {
     discount: 150,
     applicableType: 'regular',
     label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ)'
+  },
+  'FC750': {
+    code: 'FC750',
+    discount: 150,
+    applicableType: 'regular',
+    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ)'
   }
 };
 
@@ -718,12 +724,16 @@ function isPromoUsedByPhone(code, phone) {
   const clean = cleanThaiPhone(phone);
   if (!clean) return false;
 
+  const codesToCheck = (code === 'FB750' || code === 'FC750') ? ['FB750', 'FC750'] : [code];
+
   // 1. ตรวจสอบจากประวัติการสั่งซื้อในเครื่อง (Local Storage)
   try {
     const localOrders = JSON.parse(localStorage.getItem('theater_orders') || '[]');
     for (const o of localOrders) {
       if (cleanThaiPhone(o.phone) === clean) {
-        if (o.promoCode === code || (o.note && o.note.toUpperCase().includes(code))) {
+        const orderPromo = (o.promoCode || '').toUpperCase();
+        const orderNote = (o.note || '').toUpperCase();
+        if (codesToCheck.some(c => orderPromo === c || orderNote.includes(c))) {
           return true;
         }
       }
@@ -733,8 +743,10 @@ function isPromoUsedByPhone(code, phone) {
   // 2. ตรวจสอบจากรายชื่อเบอร์ที่เคยใช้โค้ดที่ดึงมาจาก Google Sheets
   try {
     const usedPhonesObj = JSON.parse(localStorage.getItem('theater_used_promo_phones') || '{}');
-    const list = usedPhonesObj[code] || [];
-    if (list.includes(clean)) return true;
+    for (const c of codesToCheck) {
+      const list = usedPhonesObj[c] || [];
+      if (list.includes(clean)) return true;
+    }
   } catch (e) {}
 
   return false;
