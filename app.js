@@ -151,6 +151,7 @@ const state = {
   selectedTypeId: null,
   qty:            1,
   promoCode:      null,
+  promoPhone:     null,
   discountAmount: 0,
   currentOrder:   null,
   slipBase64:     null,
@@ -315,6 +316,15 @@ function goTo(view) {
     }
   }
   if (view === 'info') {
+    // ตรวจสอบกรณีที่กรอกโค้ดค้างไว้แต่ยังไม่ได้กดตรวจสอบสิทธิ์
+    const unappliedCode = document.getElementById('promo-input')?.value.trim();
+    if (unappliedCode && !state.promoCode) {
+      showToast('⚠️ คุณได้กรอกโค้ดส่วนลดไว้แต่ยังไม่ได้กดตรวจสอบสิทธิ์ กรุณากด "ตรวจสอบสิทธิ์" ก่อนดำเนินการต่อ หรือลบโค้ดออกหากไม่ใช้', 'warning');
+      document.getElementById('discount-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('promo-phone-input')?.focus();
+      return;
+    }
+
     if (state.selectedTypeId === 'earlybird' && state.selectedDateId && state.selectedSlot) {
       const ebRem = getEarlybirdRemainingSeats(state.selectedDateId, state.selectedSlot);
       if (ebRem <= 0) {
@@ -328,6 +338,12 @@ function goTo(view) {
     }
     renderRecap();
     restoreForm();
+    if (state.promoCode && state.promoPhone) {
+      const fPhone = document.getElementById('f-phone');
+      if (fPhone && !fPhone.value) {
+        fPhone.value = state.promoPhone;
+      }
+    }
     checkPhonePromoWarning();
   }
   if (view === 'confirm' && state.currentOrder) renderConfirmation();
@@ -782,9 +798,11 @@ function checkPhonePromoWarning() {
   warnEl.textContent = '';
 }
 
-function applyPromoCode() {
+async function applyPromoCode() {
   const input = document.getElementById('promo-input');
+  const phoneInput = document.getElementById('promo-phone-input');
   const msgEl = document.getElementById('promo-msg');
+  const btn = document.getElementById('btn-apply-promo');
   if (!input || !msgEl) return;
 
   const rawCode = input.value.trim().toUpperCase();
@@ -792,12 +810,14 @@ function applyPromoCode() {
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
     msgEl.textContent = 'กรุณากรอกโค้ดส่วนลด';
+    input.focus();
     return;
   }
 
   const promo = PROMO_CODES[rawCode];
   if (!promo) {
     state.promoCode = null;
+    state.promoPhone = null;
     state.discountAmount = 0;
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
@@ -806,7 +826,7 @@ function applyPromoCode() {
     return;
   }
 
-  // ตรวจสอบเงื่อนไขประเภทบัตร (เช่น ลดได้เฉพาะบัตร Regular 900 บาท เท่านั้น)
+  // 1. ตรวจสอบเงื่อนไขประเภทบัตร (เช่น ลดได้เฉพาะบัตร Regular 900 บาท เท่านั้น)
   if (promo.applicableType) {
     if (!state.selectedTypeId) {
       msgEl.style.display = 'block';
@@ -816,6 +836,7 @@ function applyPromoCode() {
     }
     if (state.selectedTypeId !== promo.applicableType) {
       state.promoCode = null;
+      state.promoPhone = null;
       state.discountAmount = 0;
       msgEl.style.display = 'block';
       msgEl.style.color = '#f87171';
@@ -825,34 +846,78 @@ function applyPromoCode() {
     }
   }
 
-  // ตรวจสอบเบอร์โทรหากมีกรอกไว้แล้วในระบบ
-  const currentPhone = cleanThaiPhone(document.getElementById('f-phone')?.value || '');
-  if (currentPhone && isPromoUsedByPhone(promo.code, currentPhone)) {
-    state.promoCode = null;
-    state.discountAmount = 0;
+  // 2. ตรวจสอบเบอร์โทรศัพท์สำหรับรับสิทธิ์
+  const rawPhone = phoneInput ? phoneInput.value.trim() : (document.getElementById('f-phone')?.value || '');
+  const cleanPhone = cleanThaiPhone(rawPhone);
+  if (!cleanPhone || cleanPhone.length < 9) {
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
-    msgEl.textContent = `❌ เบอร์โทร ${currentPhone} เคยใช้สิทธิ์โค้ด ${promo.code} แล้ว (จำกัด 1 สิทธิ์ต่อ 1 เบอร์โทรศัพท์)`;
+    msgEl.textContent = '⚠️ กรุณากรอกเบอร์โทรศัพท์เพื่อตรวจสอบสิทธิ์ก่อนยืนยันการโอนเงิน';
+    if (phoneInput) phoneInput.focus();
+    return;
+  }
+
+  // แสดงสถานะระหว่างตรวจสอบ
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'กำลังตรวจ...';
+  }
+  msgEl.style.display = 'block';
+  msgEl.style.color = '#93c5fd';
+  msgEl.textContent = '⏳ กำลังตรวจสอบสิทธิ์เบอร์โทรศัพท์...';
+
+  // 3. ตรวจสอบในเครื่อง (LocalStorage)
+  if (isPromoUsedByPhone(promo.code, cleanPhone)) {
+    if (btn) { btn.disabled = false; btn.textContent = 'ตรวจสอบสิทธิ์'; }
+    state.promoCode = null;
+    state.promoPhone = null;
+    state.discountAmount = 0;
+    msgEl.style.color = '#f87171';
+    msgEl.textContent = `❌ เบอร์โทร ${cleanPhone} เคยใช้สิทธิ์โค้ด ${promo.code} แล้ว (จำกัด 1 สิทธิ์ต่อ 1 เบอร์โทรศัพท์)`;
     updateSummary();
     return;
   }
 
+  // 4. ตรวจสอบแบบ Real-time กับ Google Sheets
+  const isUsedOnline = await checkPromoPhoneOnline(promo.code, cleanPhone);
+  if (btn) { btn.disabled = false; btn.textContent = 'ตรวจสอบสิทธิ์'; }
+
+  if (isUsedOnline) {
+    state.promoCode = null;
+    state.promoPhone = null;
+    state.discountAmount = 0;
+    msgEl.style.color = '#f87171';
+    msgEl.textContent = `❌ เบอร์โทร ${cleanPhone} เคยใช้สิทธิ์โค้ด ${promo.code} แล้ว (จำกัด 1 สิทธิ์ต่อ 1 เบอร์โทรศัพท์)`;
+    updateSummary();
+    return;
+  }
+
+  // ผ่านการตรวจสอบสิทธิ์ 100%!
   state.promoCode = promo.code;
+  state.promoPhone = cleanPhone;
   state.discountAmount = promo.discount;
   input.value = promo.code;
-  msgEl.style.display = 'block';
+  if (phoneInput) phoneInput.value = cleanPhone;
+
+  // ส่งเบอร์ไปยังหน้าข้อมูลผู้ซื้ออัตโนมัติ
+  const fPhone = document.getElementById('f-phone');
+  if (fPhone) fPhone.value = cleanPhone;
+
   msgEl.style.color = '#4ade80';
-  msgEl.innerHTML = `✅ ใช้โค้ด <strong>${promo.code}</strong> สำเร็จ ลด ${fmt(promo.discount)} บาท (${promo.label}) <button type="button" onclick="removePromoCode()" style="margin-left:8px;background:none;border:none;color:#fca5a5;cursor:pointer;text-decoration:underline;font-size:0.8rem;">ยกเลิก</button>`;
+  msgEl.innerHTML = `✅ เบอร์ <strong>${cleanPhone}</strong> ตรวจสอบสิทธิ์สำเร็จ! ใช้โค้ด <strong>${promo.code}</strong> ลด ${fmt(promo.discount)} บาท (${promo.label}) <button type="button" onclick="removePromoCode()" style="margin-left:8px;background:none;border:none;color:#fca5a5;cursor:pointer;text-decoration:underline;font-size:0.8rem;">ยกเลิก</button>`;
   updateSummary();
   showToast(`🎉 ใช้โค้ด ${promo.code} ลดทันที ${fmt(promo.discount)} บาท`, 'success');
 }
 
 function removePromoCode() {
   state.promoCode = null;
+  state.promoPhone = null;
   state.discountAmount = 0;
   const input = document.getElementById('promo-input');
+  const phoneInput = document.getElementById('promo-phone-input');
   const msgEl = document.getElementById('promo-msg');
   if (input) input.value = '';
+  if (phoneInput) phoneInput.value = '';
   if (msgEl) {
     msgEl.style.display = 'none';
     msgEl.textContent = '';
@@ -1000,6 +1065,16 @@ async function submitOrder(event) {
 
   // Check promo code phone uniqueness (1 code per phone number)
   if (state.promoCode) {
+    if (state.promoPhone && phone !== state.promoPhone) {
+      showToast(`❌ เบอร์โทรที่ระบุ (${phone}) ไม่ตรงกับเบอร์ที่ใช้รับสิทธิ์โค้ด (${state.promoPhone})`, 'error');
+      const phoneInput = document.getElementById('f-phone');
+      if (phoneInput) {
+        phoneInput.focus();
+        phoneInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
     if (isPromoUsedByPhone(state.promoCode, phone)) {
       showToast(`❌ เบอร์โทร ${phone} เคยใช้สิทธิ์โค้ด ${state.promoCode} แล้ว (จำกัด 1 สิทธิ์ต่อ 1 เบอร์โทรศัพท์)`, 'error');
       const phoneInput = document.getElementById('f-phone');
@@ -1479,6 +1554,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const promoInput = document.getElementById('promo-input');
   if (promoInput) {
     promoInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyPromoCode();
+      }
+    });
+  }
+
+  const promoPhoneInput = document.getElementById('promo-phone-input');
+  if (promoPhoneInput) {
+    promoPhoneInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         applyPromoCode();
