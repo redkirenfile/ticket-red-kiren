@@ -687,11 +687,12 @@ function animateIn(id) {
 
 // ─── PROMO CODE ───────────────────────────────────────────────────────────
 const PROMO_CODES = {
-  'NMC300': {
-    code: 'NMC300',
-    discount: 300,
-    label: 'ส่วนลด 300 บาท'
-  }
+  // โค้ดที่ยกเลิกการใช้งานแล้ว:
+  // 'NMC300': {
+  //   code: 'NMC300',
+  //   discount: 300,
+  //   label: 'ส่วนลด 300 บาท'
+  // }
 };
 
 function applyPromoCode() {
