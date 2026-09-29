@@ -1315,9 +1315,8 @@ function backfillOrderTotals(ss) {
           else if (typeStr.includes('STUDENT')) price = 550;
           else if (typeStr.includes('REGULAR')) {
             price = 900;
-            if (qty >= 10) price = 700;
-            else if (qty >= 5) price = 800;
-            else if (qty >= 3) price = 850;
+            if (qty >= 5) price = 700;
+            else if (qty >= 3) price = 800;
           }
         }
 
@@ -1328,8 +1327,8 @@ function backfillOrderTotals(ss) {
           if (noteStr.includes('NMC600')) {
             calculatedTotal = Math.max(0, calculatedTotal - 300);
           } else if (noteStr.includes('FB750')) {
-            // โค้ด FB750 ไม่สามารถใช้กับโปรโมชั่น 10 ใบได้
-            if (qty < 10) {
+            // โค้ด FB750 ไม่สามารถใช้กับโปรโมชั่น 5-10 ใบได้
+            if (qty < 5) {
               calculatedTotal = Math.max(0, calculatedTotal - 150);
             }
           } else if (noteStr.includes('ลด 300') || noteStr.includes('NMC300')) {

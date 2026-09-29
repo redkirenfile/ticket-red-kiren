@@ -331,9 +331,9 @@ function goTo(view) {
       }
     }
 
-    if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 10) {
+    if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 5) {
       removePromoCode();
-      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบได้ (โค้ดถูกยกเลิกแล้ว)', 'warning');
+      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 5-10 ใบได้ (โค้ดถูกยกเลิกแล้ว)', 'warning');
       return;
     }
 
@@ -578,9 +578,9 @@ function selectType(typeId) {
     if (promo.applicableType && promo.applicableType !== typeId) {
       removePromoCode();
       showToast('⚠️ โค้ดส่วนลดใช้ได้เฉพาะบัตร REGULAR จึงถูกยกเลิก', 'warning');
-    } else if (state.promoCode === 'FB750' && typeId === 'regular' && state.qty >= 10) {
+    } else if (state.promoCode === 'FB750' && typeId === 'regular' && state.qty >= 5) {
       removePromoCode();
-      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่น 10 ใบ จึงถูกยกเลิก', 'warning');
+      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่น 5-10 ใบ จึงถูกยกเลิก', 'warning');
     }
   }
   document.querySelectorAll('.ticket-type-card').forEach(el => el.classList.remove('selected'));
@@ -743,13 +743,13 @@ const PROMO_CODES = {
     code: 'FB750',
     discount: 150,
     applicableType: 'regular',
-    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 10 ใบ)'
+    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 5-10 ใบ)'
   },
   'FC750': {
     code: 'FB750', // alias เผื่อลูกค้าจำโค้ดเป็น FC750
     discount: 150,
     applicableType: 'regular',
-    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 10 ใบ)'
+    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 5-10 ใบ)'
   }
 };
 
@@ -807,13 +807,13 @@ function applyPromoCode() {
     }
   }
 
-  // 2. เงื่อนไขพิเศษ: โค้ด FB750 ไม่สามารถใช้กับโปร 10 ใบได้
-  if (promo.code === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 10) {
+  // 2. เงื่อนไขพิเศษ: โค้ด FB750 ไม่สามารถใช้กับโปร 5-10 ใบได้
+  if (promo.code === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 5) {
     state.promoCode = null;
     state.discountAmount = 0;
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
-    msgEl.textContent = '⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบได้ (เนื่องจากได้รับราคาพิเศษ 700 บาทแล้ว)';
+    msgEl.textContent = '⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 5-10 ใบได้ (เนื่องจากได้รับราคาพิเศษ 700 บาทแล้ว)';
     updateSummary();
     return;
   }
@@ -852,10 +852,10 @@ function changeQty(delta) {
   document.getElementById('qty-minus').disabled = state.qty <= 1;
   document.getElementById('qty-plus').disabled  = state.qty >= maxBuy;
 
-  // หากใช้โค้ด FB750 อยู่ แล้วจำนวนเพิ่มเป็น 10 ใบ ให้ยกเลิกโค้ด FB750 อัตโนมัติ
-  if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 10) {
+  // หากใช้โค้ด FB750 อยู่ แล้วจำนวนเพิ่มเป็น 5 ใบขึ้นไป ให้ยกเลิกโค้ด FB750 อัตโนมัติ
+  if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 5) {
     removePromoCode();
-    showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบ จึงถูกยกเลิก', 'warning');
+    showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่น 5-10 ใบ จึงถูกยกเลิก', 'warning');
   }
 
   updateSummary();
@@ -864,25 +864,18 @@ function changeQty(delta) {
 
 // ─── TIERED PRICING (REGULAR TICKET) ──────────────────────────────────────
 function getRegularTierInfo(qty) {
-  if (qty >= 10) {
+  if (qty >= 5) {
     return {
       unitPrice: 700,
       discountPerTicket: 200,
-      tierLabel: 'ซื้อ 10 ใบ เหลือใบละ 700 บาท'
-    };
-  }
-  if (qty >= 5) {
-    return {
-      unitPrice: 800,
-      discountPerTicket: 100,
-      tierLabel: 'ซื้อ 5-9 ใบ เหลือใบละ 800 บาท'
+      tierLabel: 'ซื้อ 5-10 ใบ เหลือใบละ 700 บาท'
     };
   }
   if (qty >= 3) {
     return {
-      unitPrice: 850,
-      discountPerTicket: 50,
-      tierLabel: 'ซื้อ 3-4 ใบ เหลือใบละ 850 บาท'
+      unitPrice: 800,
+      discountPerTicket: 100,
+      tierLabel: 'ซื้อ 3-4 ใบ เหลือใบละ 800 บาท'
     };
   }
   return {
@@ -1047,9 +1040,9 @@ async function submitOrder(event) {
     }
   }
 
-  // Check FB750 with 10 tickets
-  if (state.promoCode === 'FB750' && type.id === 'regular' && state.qty >= 10) {
-    return showToast('❌ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 10 ใบได้', 'error');
+  // Check FB750 with 5-10 tickets
+  if (state.promoCode === 'FB750' && type.id === 'regular' && state.qty >= 5) {
+    return showToast('❌ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 5-10 ใบได้', 'error');
   }
 
   const orderId    = generateOrderId();
