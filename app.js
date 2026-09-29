@@ -2,6 +2,11 @@
    app.js — Theater Ticket App (Main SPA Logic)
    ===================================================================== */
 
+// Purge any legacy stale promo restrictions or caches immediately
+try {
+  localStorage.removeItem('theater_used_promo_phones');
+} catch(e) {}
+
 // ─── CONFIG ───────────────────────────────────────────────────────────────
 const CONFIG = {
   showName: 'แฟ้มคดีกิเลนแดง : สังหารหมู่เขาศูนย์',
@@ -313,13 +318,17 @@ function goTo(view) {
     }
   }
   if (view === 'info') {
-    // ตรวจสอบกรณีที่กรอกโค้ดค้างไว้แต่ยังไม่ได้กดใช้โค้ด
-    const unappliedCode = document.getElementById('promo-input')?.value.trim();
-    if (unappliedCode && !state.promoCode) {
-      showToast('⚠️ คุณได้กรอกโค้ดส่วนลดไว้แต่ยังไม่ได้กดใช้โค้ด กรุณากด "ใช้โค้ด" ก่อนดำเนินการต่อ หรือลบโค้ดออกหากไม่ใช้', 'warning');
-      document.getElementById('discount-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      document.getElementById('promo-input')?.focus();
-      return;
+    // ตรวจสอบกรณีที่กรอกโค้ดค้างไว้แต่ยังไม่ได้กดใช้โค้ด ให้ระบบพยายามกดใช้โค้ดให้อัตโนมัติทันที
+    const rawUnapplied = (document.getElementById('promo-input')?.value || '').replace(/[\u200B-\u200D\uFEFF\s]/g, '').trim().toUpperCase();
+    if (rawUnapplied && !state.promoCode) {
+      if (PROMO_CODES[rawUnapplied]) {
+        applyPromoCode();
+      } else {
+        showToast('⚠️ โค้ดส่วนลดที่คุณกรอกไม่ถูกต้อง หรือยังไม่ได้กดใช้โค้ด กรุณาตรวจสอบก่อนดำเนินการต่อ', 'warning');
+        document.getElementById('discount-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('promo-input')?.focus();
+        return;
+      }
     }
 
     if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 10) {
@@ -577,6 +586,16 @@ function selectType(typeId) {
   document.querySelectorAll('.ticket-type-card').forEach(el => el.classList.remove('selected'));
   document.getElementById(`tc-${typeId}`)?.classList.add('selected');
   showQuantitySection();
+
+  // หากมีโค้ดส่วนลดที่กรอกไว้ล่วงหน้า ให้ตรวจและใช้โค้ดอัตโนมัติเมื่อเลือกบัตร Regular
+  const curPromoInput = document.getElementById('promo-input');
+  if (curPromoInput && curPromoInput.value && !state.promoCode && typeId === 'regular') {
+    const rawClean = curPromoInput.value.replace(/[\u200B-\u200D\uFEFF\s]/g, '').trim().toUpperCase();
+    if (PROMO_CODES[rawClean]) {
+      applyPromoCode();
+    }
+  }
+
   updateSummary();
   renderPaymentQR();
   updateStepBackButtons();
@@ -725,6 +744,12 @@ const PROMO_CODES = {
     discount: 150,
     applicableType: 'regular',
     label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 10 ใบ)'
+  },
+  'FC750': {
+    code: 'FB750', // alias เผื่อลูกค้าจำโค้ดเป็น FC750
+    discount: 150,
+    applicableType: 'regular',
+    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 10 ใบ)'
   }
 };
 
@@ -733,11 +758,21 @@ function applyPromoCode() {
   const msgEl = document.getElementById('promo-msg');
   if (!input || !msgEl) return;
 
-  const rawCode = input.value.trim().toUpperCase();
+  // ทำความสะอาดโค้ด: ลบช่องว่าง, invisible characters, แปลงเป็นตัวพิมพ์ใหญ่
+  let rawCode = (input.value || '').replace(/[\u200B-\u200D\uFEFF\s]/g, '').trim().toUpperCase();
   if (!rawCode) {
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
     msgEl.textContent = 'กรุณากรอกโค้ดส่วนลด';
+    input.focus();
+    return;
+  }
+
+  // ดักจับกรณีพิมพ์แป้นพิมพ์ภาษาไทยค้างไว้ (เช่น ดฺ750)
+  if (/[\u0E00-\u0E7F]/.test(rawCode)) {
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#f87171';
+    msgEl.textContent = '⚠️ ดูเหมือนคุณพิมพ์เป็นภาษาไทย กรุณาเปลี่ยนแป้นพิมพ์เป็นภาษาอังกฤษ (เช่น FB750 หรือ NMC600)';
     input.focus();
     return;
   }
@@ -1428,7 +1463,7 @@ function showToast(msg, type = '') {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   // Clear any promo phone caches
   try {
     localStorage.removeItem('theater_used_promo_phones');
@@ -1485,7 +1520,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-
+  // รองรับการรับโค้ดส่วนลดผ่าน URL Query (เช่น ?promo=FB750 หรือ ?code=FB750)
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlPromo = urlParams.get('promo') || urlParams.get('code');
+    if (urlPromo) {
+      const cleanUrlCode = urlPromo.replace(/[\u200B-\u200D\uFEFF\s]/g, '').trim().toUpperCase();
+      if (promoInput && !promoInput.value) {
+        promoInput.value = cleanUrlCode;
+      }
+    }
+  } catch (e) {}
 
   window.addEventListener('scroll', () => {
     const header = document.querySelector('.site-header');
@@ -1494,7 +1539,13 @@ document.addEventListener('DOMContentLoaded', () => {
       ? 'rgba(8, 8, 10, 0.96)'
       : 'rgba(8, 8, 10, 0.85)';
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 /**
  * Analog Clock that ticks backward based on real-time clock beat
