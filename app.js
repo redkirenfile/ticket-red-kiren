@@ -868,14 +868,14 @@ function getRegularTierInfo(qty) {
     return {
       unitPrice: 700,
       discountPerTicket: 200,
-      tierLabel: 'ซื้อ 5-10 ใบ เหลือใบละ 700 บาท'
+      tierLabel: 'โปรโมชั่น'
     };
   }
   if (qty >= 3) {
     return {
       unitPrice: 800,
       discountPerTicket: 100,
-      tierLabel: 'ซื้อ 3-4 ใบ เหลือใบละ 800 บาท'
+      tierLabel: 'โปรโมชั่น'
     };
   }
   return {
@@ -919,7 +919,7 @@ function updateSummary() {
   const volVal = document.getElementById('sum-volume-discount');
   if (volumeDiscount > 0 && volRow) {
     volRow.style.display = 'flex';
-    if (volLabel) volLabel.textContent = `โปรโมชั่น (${tier.tierLabel})`;
+    if (volLabel) volLabel.textContent = 'โปรโมชั่น';
     if (volVal) volVal.textContent = `-${fmt(volumeDiscount)} บาท`;
   } else if (volRow) {
     volRow.style.display = 'none';
@@ -998,7 +998,7 @@ function renderRecap() {
   if (recapDiscountBadge) {
     const badges = [];
     if (volumeDiscount > 0) {
-      badges.push(`🎉 โปรซื้อหลายใบ: ${tier.tierLabel} (ลด ${fmt(volumeDiscount)} บาท)`);
+      badges.push(`🎉 โปรโมชั่น (ลด ${fmt(volumeDiscount)} บาท)`);
     }
     if (promoDiscount > 0) {
       badges.push(`🏷️ ใช้โค้ด ${state.promoCode} ลด ${fmt(promoDiscount)} บาท`);
