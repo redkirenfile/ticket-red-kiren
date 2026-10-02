@@ -331,9 +331,9 @@ function goTo(view) {
       }
     }
 
-    if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 5) {
+    if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 3) {
       removePromoCode();
-      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 5-10 ใบได้ (โค้ดถูกยกเลิกแล้ว)', 'warning');
+      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 3 ใบขึ้นไปได้ (โค้ดถูกยกเลิกแล้ว)', 'warning');
       return;
     }
 
@@ -578,21 +578,24 @@ function selectType(typeId) {
     if (promo.applicableType && promo.applicableType !== typeId) {
       removePromoCode();
       showToast('⚠️ โค้ดส่วนลดใช้ได้เฉพาะบัตร REGULAR จึงถูกยกเลิก', 'warning');
-    } else if (state.promoCode === 'FB750' && typeId === 'regular' && state.qty >= 5) {
+    } else if (state.promoCode === 'FB750' && typeId === 'regular' && state.qty >= 3) {
       removePromoCode();
-      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่น 5-10 ใบ จึงถูกยกเลิก', 'warning');
+      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 3 ใบขึ้นไปได้ จึงถูกยกเลิก', 'warning');
     }
   }
   document.querySelectorAll('.ticket-type-card').forEach(el => el.classList.remove('selected'));
   document.getElementById(`tc-${typeId}`)?.classList.add('selected');
   showQuantitySection();
 
-  // หากมีโค้ดส่วนลดที่กรอกไว้ล่วงหน้า ให้ตรวจและใช้โค้ดอัตโนมัติเมื่อเลือกบัตร Regular
+  // หากมีโค้ดส่วนลดที่กรอกไว้ล่วงหน้า ให้ตรวจและใช้โค้ดอัตโนมัติ
   const curPromoInput = document.getElementById('promo-input');
-  if (curPromoInput && curPromoInput.value && !state.promoCode && typeId === 'regular') {
+  if (curPromoInput && curPromoInput.value && !state.promoCode) {
     const rawClean = curPromoInput.value.replace(/[\u200B-\u200D\uFEFF\s]/g, '').trim().toUpperCase();
     if (PROMO_CODES[rawClean]) {
-      applyPromoCode();
+      const p = PROMO_CODES[rawClean];
+      if (!p.applicableType || p.applicableType === typeId) {
+        applyPromoCode();
+      }
     }
   }
 
@@ -743,13 +746,19 @@ const PROMO_CODES = {
     code: 'FB750',
     discount: 150,
     applicableType: 'regular',
-    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 5-10 ใบ)'
+    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1-2 ใบ, ไม่ร่วมกับโปร 3 ใบขึ้นไป)'
   },
   'FC750': {
     code: 'FB750', // alias เผื่อลูกค้าจำโค้ดเป็น FC750
     discount: 150,
     applicableType: 'regular',
-    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1 ใบ, ไม่ร่วมกับโปร 5-10 ใบ)'
+    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1-2 ใบ, ไม่ร่วมกับโปร 3 ใบขึ้นไป)'
+  },
+  'FARO100': {
+    code: 'FARO100',
+    discount: 100,
+    applicableType: null, // ใช้ร่วมได้กับทุกโปร และทุกประเภทบัตร
+    label: 'ลด 100 บาท (ใช้ร่วมได้กับทุกโปรโมชั่น)'
   }
 };
 
@@ -772,7 +781,7 @@ function applyPromoCode() {
   if (/[\u0E00-\u0E7F]/.test(rawCode)) {
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
-    msgEl.textContent = '⚠️ ดูเหมือนคุณพิมพ์เป็นภาษาไทย กรุณาเปลี่ยนแป้นพิมพ์เป็นภาษาอังกฤษ (เช่น FB750 หรือ NMC600)';
+    msgEl.textContent = '⚠️ ดูเหมือนคุณพิมพ์เป็นภาษาไทย กรุณาเปลี่ยนแป้นพิมพ์เป็นภาษาอังกฤษ (เช่น FB750, NMC600, FARO100)';
     input.focus();
     return;
   }
@@ -788,7 +797,7 @@ function applyPromoCode() {
     return;
   }
 
-  // 1. ตรวจสอบเงื่อนไขประเภทบัตร (ลดได้เฉพาะบัตร Regular 900 บาท เท่านั้น)
+  // 1. ตรวจสอบเงื่อนไขประเภทบัตร (เช่น ลดได้เฉพาะบัตร Regular 900 บาท เท่านั้น)
   if (promo.applicableType) {
     if (!state.selectedTypeId) {
       msgEl.style.display = 'block';
@@ -807,13 +816,13 @@ function applyPromoCode() {
     }
   }
 
-  // 2. เงื่อนไขพิเศษ: โค้ด FB750 ไม่สามารถใช้กับโปร 5-10 ใบได้
-  if (promo.code === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 5) {
+  // 2. เงื่อนไขพิเศษ: โค้ด FB750 ไม่สามารถใช้กับโปร 3 ใบขึ้นไปได้
+  if (promo.code === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 3) {
     state.promoCode = null;
     state.discountAmount = 0;
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
-    msgEl.textContent = '⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 5-10 ใบได้ (เนื่องจากได้รับราคาพิเศษ 700 บาทแล้ว)';
+    msgEl.textContent = '⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 3 ใบขึ้นไปได้ (เนื่องจากได้รับราคาพิเศษแล้ว)';
     updateSummary();
     return;
   }
@@ -852,10 +861,10 @@ function changeQty(delta) {
   document.getElementById('qty-minus').disabled = state.qty <= 1;
   document.getElementById('qty-plus').disabled  = state.qty >= maxBuy;
 
-  // หากใช้โค้ด FB750 อยู่ แล้วจำนวนเพิ่มเป็น 5 ใบขึ้นไป ให้ยกเลิกโค้ด FB750 อัตโนมัติ
-  if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 5) {
+  // หากใช้โค้ด FB750 อยู่ แล้วจำนวนเพิ่มเป็น 3 ใบขึ้นไป ให้ยกเลิกโค้ด FB750 อัตโนมัติ
+  if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 3) {
     removePromoCode();
-    showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่น 5-10 ใบ จึงถูกยกเลิก', 'warning');
+    showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 3 ใบขึ้นไปได้ จึงถูกยกเลิก', 'warning');
   }
 
   updateSummary();
@@ -1040,9 +1049,9 @@ async function submitOrder(event) {
     }
   }
 
-  // Check FB750 with 5-10 tickets
-  if (state.promoCode === 'FB750' && type.id === 'regular' && state.qty >= 5) {
-    return showToast('❌ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 5-10 ใบได้', 'error');
+  // Check FB750 with 3+ tickets
+  if (state.promoCode === 'FB750' && type.id === 'regular' && state.qty >= 3) {
+    return showToast('❌ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 3 ใบขึ้นไปได้', 'error');
   }
 
   const orderId    = generateOrderId();

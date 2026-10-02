@@ -553,7 +553,8 @@ function doGet(e) {
       // ยกเลิกการจำกัดสิทธิ์เบอร์ซ้ำ (คืนค่าว่างเพื่อให้เครื่องที่แคชไว้ไม่บล็อกเบอร์)
       settings["usedPromoPhones"] = {
         'NMC600': [],
-        'FB750': []
+        'FB750': [],
+        'FARO100': []
       };
 
       return output(settings);
@@ -1327,10 +1328,13 @@ function backfillOrderTotals(ss) {
           if (noteStr.includes('NMC600')) {
             calculatedTotal = Math.max(0, calculatedTotal - 300);
           } else if (noteStr.includes('FB750')) {
-            // โค้ด FB750 ไม่สามารถใช้กับโปรโมชั่น 5-10 ใบได้
-            if (qty < 5) {
+            // โค้ด FB750 ไม่สามารถใช้กับโปรโมชั่น 3 ใบขึ้นไปได้
+            if (qty < 3) {
               calculatedTotal = Math.max(0, calculatedTotal - 150);
             }
+          } else if (noteStr.includes('FARO100')) {
+            // โค้ด FARO100 ลด 100 บาท ใช้ร่วมได้กับทุกโปร
+            calculatedTotal = Math.max(0, calculatedTotal - 100);
           } else if (noteStr.includes('ลด 300') || noteStr.includes('NMC300')) {
             calculatedTotal = Math.max(0, calculatedTotal - 300);
           }
