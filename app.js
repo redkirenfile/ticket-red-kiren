@@ -333,7 +333,7 @@ function goTo(view) {
 
     if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 3) {
       removePromoCode();
-      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 3 ใบขึ้นไปได้ (โค้ดถูกยกเลิกแล้ว)', 'warning');
+      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้', 'warning');
       return;
     }
 
@@ -580,7 +580,7 @@ function selectType(typeId) {
       showToast('⚠️ โค้ดส่วนลดใช้ได้เฉพาะบัตร REGULAR จึงถูกยกเลิก', 'warning');
     } else if (state.promoCode === 'FB750' && typeId === 'regular' && state.qty >= 3) {
       removePromoCode();
-      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 3 ใบขึ้นไปได้ จึงถูกยกเลิก', 'warning');
+      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้', 'warning');
     }
   }
   document.querySelectorAll('.ticket-type-card').forEach(el => el.classList.remove('selected'));
@@ -797,12 +797,12 @@ function applyPromoCode() {
     return;
   }
 
-  // 1. ตรวจสอบเงื่อนไขประเภทบัตร (เช่น ลดได้เฉพาะบัตร Regular 900 บาท เท่านั้น)
+  // 1. ตรวจสอบเงื่อนไขประเภทบัตร (เช่น ลดได้เฉพาะบัตร Regular เท่านั้น)
   if (promo.applicableType) {
     if (!state.selectedTypeId) {
       msgEl.style.display = 'block';
       msgEl.style.color = '#f87171';
-      msgEl.textContent = '⚠️ กรุณาเลือกประเภทบัตร REGULAR (900 บาท) ก่อนใช้โค้ดส่วนลดนี้';
+      msgEl.textContent = '⚠️ กรุณาเลือกประเภทบัตร REGULAR ก่อนใช้โค้ดส่วนลดนี้';
       return;
     }
     if (state.selectedTypeId !== promo.applicableType) {
@@ -810,7 +810,7 @@ function applyPromoCode() {
       state.discountAmount = 0;
       msgEl.style.display = 'block';
       msgEl.style.color = '#f87171';
-      msgEl.textContent = '⚠️ โค้ดนี้ใช้ได้เฉพาะบัตรประเภท REGULAR (900 บาท) เท่านั้น';
+      msgEl.textContent = '⚠️ โค้ดนี้ใช้ได้เฉพาะบัตรประเภท REGULAR เท่านั้น';
       updateSummary();
       return;
     }
@@ -822,7 +822,7 @@ function applyPromoCode() {
     state.discountAmount = 0;
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
-    msgEl.textContent = '⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 3 ใบขึ้นไปได้ (เนื่องจากได้รับราคาพิเศษแล้ว)';
+    msgEl.textContent = '⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้';
     updateSummary();
     return;
   }
@@ -832,9 +832,9 @@ function applyPromoCode() {
   input.value = promo.code;
   msgEl.style.display = 'block';
   msgEl.style.color = '#4ade80';
-  msgEl.innerHTML = `✅ ใช้โค้ด <strong>${promo.code}</strong> สำเร็จ ลด ${fmt(promo.discount)} บาท (${promo.label}) <button type="button" onclick="removePromoCode()" style="margin-left:8px;background:none;border:none;color:#fca5a5;cursor:pointer;text-decoration:underline;font-size:0.8rem;">ยกเลิก</button>`;
+  msgEl.innerHTML = `✅ ใช้โค้ด <strong>${promo.code}</strong> สำเร็จ <button type="button" onclick="removePromoCode()" style="margin-left:8px;background:none;border:none;color:#fca5a5;cursor:pointer;text-decoration:underline;font-size:0.8rem;">ยกเลิก</button>`;
   updateSummary();
-  showToast(`🎉 ใช้โค้ด ${promo.code} ลดทันที ${fmt(promo.discount)} บาท`, 'success');
+  showToast(`🎉 ใช้โค้ด ${promo.code} สำเร็จ`, 'success');
 }
 
 function removePromoCode() {
@@ -864,7 +864,7 @@ function changeQty(delta) {
   // หากใช้โค้ด FB750 อยู่ แล้วจำนวนเพิ่มเป็น 3 ใบขึ้นไป ให้ยกเลิกโค้ด FB750 อัตโนมัติ
   if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 3) {
     removePromoCode();
-    showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 3 ใบขึ้นไปได้ จึงถูกยกเลิก', 'warning');
+    showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้', 'warning');
   }
 
   updateSummary();
@@ -1049,9 +1049,9 @@ async function submitOrder(event) {
     }
   }
 
-  // Check FB750 with 3+ tickets
+  // Check FB750 with other promotions
   if (state.promoCode === 'FB750' && type.id === 'regular' && state.qty >= 3) {
-    return showToast('❌ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นซื้อ 3 ใบขึ้นไปได้', 'error');
+    return showToast('❌ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้', 'error');
   }
 
   const orderId    = generateOrderId();
