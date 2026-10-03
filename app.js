@@ -153,6 +153,7 @@ const state = {
   selectedSlot:   null,
   selectedTypeId: null,
   qty:            1,
+  promoCodes:     [],
   promoCode:      null,
   discountAmount: 0,
   currentOrder:   null,
@@ -320,7 +321,7 @@ function goTo(view) {
   if (view === 'info') {
     // ตรวจสอบกรณีที่กรอกโค้ดค้างไว้แต่ยังไม่ได้กดใช้โค้ด ให้ระบบพยายามกดใช้โค้ดให้อัตโนมัติทันที
     const rawUnapplied = (document.getElementById('promo-input')?.value || '').replace(/[\u200B-\u200D\uFEFF\s]/g, '').trim().toUpperCase();
-    if (rawUnapplied && !state.promoCode) {
+    if (rawUnapplied) {
       if (PROMO_CODES[rawUnapplied]) {
         applyPromoCode();
       } else {
@@ -331,8 +332,8 @@ function goTo(view) {
       }
     }
 
-    if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 3) {
-      removePromoCode();
+    if (state.promoCodes && state.promoCodes.includes('FB750') && state.selectedTypeId === 'regular' && state.qty >= 3) {
+      removePromoCode('FB750');
       showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้', 'warning');
       return;
     }
@@ -572,16 +573,22 @@ function selectType(typeId) {
     }
   }
   state.selectedTypeId = typeId;
-  // หากใช้โค้ดส่วนลดอยู่ แล้วเปลี่ยนประเภทบัตรที่ไม่ตรงเงื่อนไข ให้ยกเลิกโค้ด
-  if (state.promoCode && PROMO_CODES[state.promoCode]) {
-    const promo = PROMO_CODES[state.promoCode];
-    if (promo.applicableType && promo.applicableType !== typeId) {
-      removePromoCode();
-      showToast('⚠️ โค้ดส่วนลดใช้ได้เฉพาะบัตร REGULAR จึงถูกยกเลิก', 'warning');
-    } else if (state.promoCode === 'FB750' && typeId === 'regular' && state.qty >= 3) {
-      removePromoCode();
-      showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้', 'warning');
-    }
+  // หากใช้โค้ดส่วนลดอยู่ แล้วเปลี่ยนประเภทบัตรที่ไม่ตรงเงื่อนไข ให้ยกเลิกเฉพาะโค้ดที่ไม่ตรงเงื่อนไข
+  if (state.promoCodes && state.promoCodes.length > 0) {
+    let removedAny = false;
+    [...state.promoCodes].forEach(code => {
+      const promo = PROMO_CODES[code];
+      if (promo && promo.applicableType && promo.applicableType !== typeId) {
+        removePromoCode(code, false);
+        showToast(`⚠️ โค้ด ${code} ใช้ได้เฉพาะบัตร REGULAR จึงถูกยกเลิก`, 'warning');
+        removedAny = true;
+      } else if (code === 'FB750' && typeId === 'regular' && state.qty >= 3) {
+        removePromoCode(code, false);
+        showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้', 'warning');
+        removedAny = true;
+      }
+    });
+    if (removedAny) updateSummary();
   }
   document.querySelectorAll('.ticket-type-card').forEach(el => el.classList.remove('selected'));
   document.getElementById(`tc-${typeId}`)?.classList.add('selected');
@@ -589,7 +596,7 @@ function selectType(typeId) {
 
   // หากมีโค้ดส่วนลดที่กรอกไว้ล่วงหน้า ให้ตรวจและใช้โค้ดอัตโนมัติ
   const curPromoInput = document.getElementById('promo-input');
-  if (curPromoInput && curPromoInput.value && !state.promoCode) {
+  if (curPromoInput && curPromoInput.value) {
     const rawClean = curPromoInput.value.replace(/[\u200B-\u200D\uFEFF\s]/g, '').trim().toUpperCase();
     if (PROMO_CODES[rawClean]) {
       const p = PROMO_CODES[rawClean];
@@ -720,6 +727,7 @@ function showQuantitySection() {
 
   animateIn('quantity-section');
   animateIn('discount-section');
+  renderAppliedPromos();
   animateIn('price-summary');
   animateIn('payment-section');
   document.getElementById('btn-to-info').style.display = 'flex';
@@ -740,27 +748,59 @@ const PROMO_CODES = {
     code: 'NMC600',
     discount: 300,
     applicableType: 'regular',
-    label: 'ลดเหลือ 600 บาท (สำหรับบัตร Regular 1 ใบ)'
+    isTopUp: false,
+    label: 'ลด 300 บาท'
   },
   'FB750': {
     code: 'FB750',
     discount: 150,
     applicableType: 'regular',
-    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1-2 ใบ, ไม่ร่วมกับโปร 3 ใบขึ้นไป)'
+    isTopUp: false,
+    label: 'ลด 150 บาท'
   },
   'FC750': {
     code: 'FB750', // alias เผื่อลูกค้าจำโค้ดเป็น FC750
     discount: 150,
     applicableType: 'regular',
-    label: 'ลดเหลือ 750 บาท (สำหรับบัตร Regular 1-2 ใบ, ไม่ร่วมกับโปร 3 ใบขึ้นไป)'
+    isTopUp: false,
+    label: 'ลด 150 บาท'
   },
   'FARO100': {
     code: 'FARO100',
     discount: 100,
-    applicableType: null, // ใช้ร่วมได้กับทุกโปร และทุกประเภทบัตร
-    label: 'ลด 100 บาท (ใช้ร่วมได้กับทุกโปรโมชั่น)'
+    applicableType: null, // ใช้ร่วมได้กับทุกโปร และทุกประเภทบัตร (Top-up)
+    isTopUp: true,
+    label: 'ลด 100 บาท'
   }
 };
+
+function recalculateDiscount() {
+  if (!Array.isArray(state.promoCodes)) state.promoCodes = [];
+  let total = 0;
+  state.promoCodes.forEach(c => {
+    const p = PROMO_CODES[c];
+    if (p) total += (p.discount || 0);
+  });
+  state.discountAmount = total;
+  state.promoCode = state.promoCodes.length > 0 ? state.promoCodes.join(', ') : null;
+}
+
+function renderAppliedPromos() {
+  const container = document.getElementById('applied-promos-container');
+  if (!container) return;
+  if (!state.promoCodes || state.promoCodes.length === 0) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'flex';
+  container.innerHTML = state.promoCodes.map(code => `
+    <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(74, 222, 128, 0.12); border:1px solid rgba(74, 222, 128, 0.35); border-radius:8px; padding:7px 12px; color:#4ade80; font-size:0.88rem;">
+      <span>✅ ใช้โค้ด <strong>${code}</strong> สำเร็จ</span>
+      <button type="button" onclick="removePromoCode('${code}')" style="background:none; border:none; color:#fca5a5; cursor:pointer; text-decoration:underline; font-size:0.82rem; margin-left:12px; padding:2px 4px;">ยกเลิก</button>
+    </div>
+  `).join('');
+}
 
 function applyPromoCode() {
   const input = document.getElementById('promo-input');
@@ -788,12 +828,19 @@ function applyPromoCode() {
 
   const promo = PROMO_CODES[rawCode];
   if (!promo) {
-    state.promoCode = null;
-    state.discountAmount = 0;
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
     msgEl.textContent = '❌ โค้ดส่วนลดไม่ถูกต้อง หรือหมดอายุแล้ว';
-    updateSummary();
+    return;
+  }
+
+  if (!Array.isArray(state.promoCodes)) state.promoCodes = [];
+
+  // ตรวจสอบว่าโค้ดนี้ถูกใช้งานแล้วหรือยัง
+  if (state.promoCodes.includes(promo.code)) {
+    msgEl.style.display = 'block';
+    msgEl.style.color = '#f87171';
+    msgEl.textContent = '⚠️ โค้ดนี้ถูกใช้งานแล้ว';
     return;
   }
 
@@ -806,49 +853,74 @@ function applyPromoCode() {
       return;
     }
     if (state.selectedTypeId !== promo.applicableType) {
-      state.promoCode = null;
-      state.discountAmount = 0;
       msgEl.style.display = 'block';
       msgEl.style.color = '#f87171';
       msgEl.textContent = '⚠️ โค้ดนี้ใช้ได้เฉพาะบัตรประเภท REGULAR เท่านั้น';
-      updateSummary();
       return;
     }
   }
 
   // 2. เงื่อนไขพิเศษ: โค้ด FB750 ไม่สามารถใช้กับโปร 3 ใบขึ้นไปได้
   if (promo.code === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 3) {
-    state.promoCode = null;
-    state.discountAmount = 0;
     msgEl.style.display = 'block';
     msgEl.style.color = '#f87171';
     msgEl.textContent = '⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้';
-    updateSummary();
     return;
   }
 
-  state.promoCode = promo.code;
-  state.discountAmount = promo.discount;
-  input.value = promo.code;
-  msgEl.style.display = 'block';
-  msgEl.style.color = '#4ade80';
-  msgEl.innerHTML = `✅ ใช้โค้ด <strong>${promo.code}</strong> สำเร็จ <button type="button" onclick="removePromoCode()" style="margin-left:8px;background:none;border:none;color:#fca5a5;cursor:pointer;text-decoration:underline;font-size:0.8rem;">ยกเลิก</button>`;
+  // 3. ตรวจสอบการใช้โค้ดหลักร่วมกัน (หากไม่ใช่โค้ด Top-up เช่น FARO100 จะไม่สามารถใช้คู่กับโค้ดหลักอื่นได้)
+  if (!promo.isTopUp) {
+    const existingBase = state.promoCodes.find(c => {
+      const p = PROMO_CODES[c];
+      return p && !p.isTopUp;
+    });
+    if (existingBase) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#f87171';
+      msgEl.textContent = `⚠️ ไม่สามารถใช้โค้ด ${promo.code} ร่วมกับ ${existingBase} ได้ (สามารถใช้ร่วมกับโค้ด Top-up เช่น FARO100 ได้)`;
+      return;
+    }
+  }
+
+  state.promoCodes.push(promo.code);
+  recalculateDiscount();
+
+  // ล้างช่องกรอกโค้ดให้ว่าง เพื่อให้กรอกโค้ดอื่นต่อได้
+  input.value = '';
+  input.placeholder = 'กรอกโค้ดส่วนลดเพิ่ม';
+  msgEl.style.display = 'none';
+  msgEl.textContent = '';
+
+  renderAppliedPromos();
   updateSummary();
   showToast(`🎉 ใช้โค้ด ${promo.code} สำเร็จ`, 'success');
 }
 
-function removePromoCode() {
-  state.promoCode = null;
-  state.discountAmount = 0;
+function removePromoCode(codeToRemove, triggerUpdate = true) {
+  if (!Array.isArray(state.promoCodes)) state.promoCodes = [];
+  if (codeToRemove) {
+    state.promoCodes = state.promoCodes.filter(c => c !== codeToRemove);
+  } else {
+    state.promoCodes = [];
+  }
+
+  recalculateDiscount();
+  renderAppliedPromos();
+
   const input = document.getElementById('promo-input');
+  if (state.promoCodes.length === 0) {
+    if (input) input.placeholder = 'กรอกโค้ดส่วนลด';
+  }
   const msgEl = document.getElementById('promo-msg');
-  if (input) input.value = '';
   if (msgEl) {
     msgEl.style.display = 'none';
     msgEl.textContent = '';
   }
-  updateSummary();
-  showToast('ยกเลิกการใช้โค้ดส่วนลดแล้ว', 'info');
+
+  if (triggerUpdate) {
+    updateSummary();
+    showToast(codeToRemove ? `ยกเลิกโค้ด ${codeToRemove} แล้ว` : 'ยกเลิกการใช้โค้ดส่วนลดแล้ว', 'info');
+  }
 }
 
 // ─── QUANTITY ─────────────────────────────────────────────────────────────
@@ -862,8 +934,8 @@ function changeQty(delta) {
   document.getElementById('qty-plus').disabled  = state.qty >= maxBuy;
 
   // หากใช้โค้ด FB750 อยู่ แล้วจำนวนเพิ่มเป็น 3 ใบขึ้นไป ให้ยกเลิกโค้ด FB750 อัตโนมัติ
-  if (state.promoCode === 'FB750' && state.selectedTypeId === 'regular' && state.qty >= 3) {
-    removePromoCode();
+  if (state.promoCodes && state.promoCodes.includes('FB750') && state.selectedTypeId === 'regular' && state.qty >= 3) {
+    removePromoCode('FB750');
     showToast('⚠️ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้', 'warning');
   }
 
@@ -940,7 +1012,10 @@ function updateSummary() {
   const discountVal = document.getElementById('sum-discount');
   if (promoDiscount > 0 && discountRow) {
     discountRow.style.display = 'flex';
-    if (discountLabel) discountLabel.textContent = `ส่วนลดโค้ด (${state.promoCode})`;
+    if (discountLabel) {
+      const codeNames = (state.promoCodes && state.promoCodes.length > 0) ? state.promoCodes.join(' + ') : (state.promoCode || '');
+      discountLabel.textContent = `ส่วนลดโค้ด (${codeNames})`;
+    }
     if (discountVal) discountVal.textContent = `-${fmt(promoDiscount)} บาท`;
   } else if (discountRow) {
     discountRow.style.display = 'none';
@@ -1009,7 +1084,12 @@ function renderRecap() {
     if (volumeDiscount > 0) {
       badges.push(`🎉 โปรโมชั่น (ลด ${fmt(volumeDiscount)} บาท)`);
     }
-    if (promoDiscount > 0) {
+    if (promoDiscount > 0 && state.promoCodes && state.promoCodes.length > 0) {
+      state.promoCodes.forEach(c => {
+        const p = PROMO_CODES[c];
+        if (p) badges.push(`🏷️ ใช้โค้ด ${p.code} ลด ${fmt(p.discount)} บาท`);
+      });
+    } else if (promoDiscount > 0 && state.promoCode) {
       badges.push(`🏷️ ใช้โค้ด ${state.promoCode} ลด ${fmt(promoDiscount)} บาท`);
     }
     if (badges.length > 0) {
@@ -1050,7 +1130,7 @@ async function submitOrder(event) {
   }
 
   // Check FB750 with other promotions
-  if (state.promoCode === 'FB750' && type.id === 'regular' && state.qty >= 3) {
+  if (state.promoCodes && state.promoCodes.includes('FB750') && type.id === 'regular' && state.qty >= 3) {
     return showToast('❌ โค้ด FB750 ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้', 'error');
   }
 
@@ -1074,7 +1154,13 @@ async function submitOrder(event) {
   if (volumeDiscount > 0) {
     promoTags.push(`[${tier.tierLabel}: ลด ${fmt(volumeDiscount)} บาท]`);
   }
-  if (promoDiscount > 0 && state.promoCode) {
+  if (promoDiscount > 0 && state.promoCodes && state.promoCodes.length > 0) {
+    const promoDesc = state.promoCodes.map(c => {
+      const p = PROMO_CODES[c];
+      return `${c} (-${fmt(p ? p.discount : 0)})`;
+    }).join(' + ');
+    promoTags.push(`[ใช้โค้ดส่วนลด: ${promoDesc} รวมลด ${fmt(promoDiscount)} บาท]`);
+  } else if (promoDiscount > 0 && state.promoCode) {
     promoTags.push(`[ใช้โค้ดส่วนลด: ${state.promoCode} ลด ${fmt(promoDiscount)} บาท]`);
   }
   if (promoTags.length > 0) {
